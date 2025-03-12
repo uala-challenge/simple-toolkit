@@ -12,6 +12,6 @@ type Service interface {
 }
 
 type Config struct {
-	Level string
-	Path  string
+	Level string `json:"level"`
+	Path  string `json:"path"`
 }

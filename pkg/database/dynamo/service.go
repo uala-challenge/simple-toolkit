@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
@@ -21,7 +20,16 @@ type service struct {
 var _ Service = (*service)(nil)
 
 func NewService(acf aws.Config, cfg Config, logger log.Service) *service {
-	client := dynamodb.NewFromConfig(acf)
+	options := dynamodb.Options{
+		Region: acf.Region,
+	}
+
+	if cfg.Endpoint != "" {
+		options.BaseEndpoint = aws.String(cfg.Endpoint)
+	}
+
+	client := dynamodb.New(options)
+
 	return &service{
 		client: client,
 		config: cfg,

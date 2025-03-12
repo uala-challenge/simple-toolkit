@@ -4,7 +4,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/uala-challenge/simple-toolkit/pkg/utilities/log"
 	"net/http"
-	"sync"
 )
 
 const (
@@ -19,14 +18,10 @@ type Service interface {
 type App struct {
 	Router *chi.Mux
 	Port   string
-	Scope  string
-	mu     sync.Mutex
 	log    log.Service
 }
 
 type Config struct {
-	Port           string
-	Scope          string
-	LogLevel       string
-	LogDestination string
+	Port string
+	Name string
 }

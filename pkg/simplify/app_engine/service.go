@@ -2,6 +2,7 @@ package app_engine
 
 import (
 	"context"
+
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 

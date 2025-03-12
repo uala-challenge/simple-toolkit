@@ -3,8 +3,9 @@ package sns
 import (
 	"context"
 	"encoding/json"
-	"go.opentelemetry.io/otel"
 	"testing"
+
+	"go.opentelemetry.io/otel"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"

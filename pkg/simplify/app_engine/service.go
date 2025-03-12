@@ -2,6 +2,8 @@ package app_engine
 
 import (
 	"context"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -22,11 +24,12 @@ func NewApp() *Engine {
 	}
 	l := creteLog(c.Log)
 	awsCfg := loadAWSConfig(c.AwsRegion, l)
+	tracerProvider := otel.GetTracerProvider()
 	return &Engine{
 		App:                simple_router.NewService(c.Router, l),
 		Log:                l,
 		SQSService:         createSQSService(awsCfg, c.SQSConfig, l),
-		SNSService:         createSNSService(awsCfg, c.SNSConfig, l),
+		SNSService:         createSNSService(awsCfg, c.SNSConfig, l, tracerProvider.Tracer("sns-service")),
 		DynamoDBService:    createDynamoService(awsCfg, c.DynamoDBConfig, l),
 		RedisService:       createRedisService(c.RedisConfig, l),
 		RepositoriesConfig: c.Repositories,
@@ -48,11 +51,11 @@ func createSQSService(acf aws.Config, cfg *sqs.Config, logger log.Service) sqs.S
 	return sqs.NewService(acf, *cfg, logger)
 }
 
-func createSNSService(acf aws.Config, cfg *sns.Config, logger log.Service) sns.Service {
+func createSNSService(acf aws.Config, cfg *sns.Config, logger log.Service, tracer trace.Tracer) sns.Service {
 	if cfg == nil {
 		return nil
 	}
-	return sns.NewService(acf, *cfg, logger)
+	return sns.NewService(acf, *cfg, logger, tracer)
 }
 
 func createDynamoService(acf aws.Config, cfg *dynamo.Config, logger log.Service) dynamo.Service {

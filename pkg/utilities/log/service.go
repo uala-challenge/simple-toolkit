@@ -19,7 +19,6 @@ var _ Service = (*service)(nil)
 var once sync.Once
 var l *logrus.Logger
 
-// NewService initializes the logging service
 func NewService(c Config) *service {
 	once.Do(func() {
 		l = logrus.New()

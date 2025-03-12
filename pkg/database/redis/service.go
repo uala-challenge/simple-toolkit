@@ -18,7 +18,7 @@ type service struct {
 
 var _ Service = (*service)(nil)
 
-func NewService(cfg Config, logger log.Service) Service {
+func NewService(cfg Config, logger log.Service) *service {
 	options := &redis.Options{
 		Addr: fmt.Sprintf("%s:%d", cfg.Host, cfg.Port),
 		DB:   cfg.DB,

@@ -20,7 +20,7 @@ type service struct {
 
 var _ Service = (*service)(nil)
 
-func NewService(acf aws.Config, cfg Config, logger log.Service) Service {
+func NewService(acf aws.Config, cfg Config, logger log.Service) *service {
 	client := dynamodb.NewFromConfig(acf)
 	return &service{
 		client: client,

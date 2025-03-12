@@ -55,7 +55,7 @@ func (s *service) Accept(ctx context.Context, message interface{}) error {
 
 		result, err := s.client.Publish(ctx, input)
 		if err == nil {
-			s.logger.Info(ctx, "✅ Mensaje publicado en SNS", map[string]interface{}{
+			s.logger.Info(ctx, "Mensaje publicado en SNS", map[string]interface{}{
 				"message_id": *result.MessageId,
 				"topic_arn":  s.config.TopicARN,
 			})

@@ -48,11 +48,11 @@ func createSNSClient(acf aws.Config, cfg Config, logger log.Service) snsClient {
 	return sns.NewFromConfig(acf, func(o *sns.Options) {
 		if cfg.BaseEndpoint != "" {
 			o.BaseEndpoint = aws.String(cfg.BaseEndpoint)
-			logger.Info(context.TODO(), "🔧 Configurando SNS con LocalStack", map[string]interface{}{
+			logger.Info(context.TODO(), "Configurando SNS con LocalStack", map[string]interface{}{
 				"endpoint": cfg.BaseEndpoint,
 			})
 		} else {
-			logger.Info(context.TODO(), "🚀 Configurando SNS con AWS", nil)
+			logger.Info(context.TODO(), "Configurando SNS con AWS", nil)
 		}
 	})
 }
@@ -65,7 +65,7 @@ func (s *service) PublishMessage(ctx context.Context, message interface{}) error
 	span.SetAttributes(attribute.String("sns.message_id", messageID))
 	span.SetAttributes(attribute.String("sns.topic_arn", s.config.TopicARN))
 
-	s.logger.Info(ctx, "📢 Publicando mensaje en SNS", map[string]interface{}{
+	s.logger.Info(ctx, "Publicando mensaje en SNS", map[string]interface{}{
 		"message_id": messageID,
 		"topic_arn":  s.config.TopicARN,
 	})

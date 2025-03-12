@@ -3,13 +3,12 @@ package viper
 import (
 	"fmt"
 	"github.com/fsnotify/fsnotify"
+	"github.com/mitchellh/mapstructure"
+	"github.com/spf13/viper"
 	"github.com/uala-challenge/simple-toolkit/pkg/utilities/app_profile"
 	"github.com/uala-challenge/simple-toolkit/pkg/utilities/file_utils"
 	"os"
 	"strings"
-
-	"github.com/mitchellh/mapstructure"
-	"github.com/spf13/viper"
 )
 
 var _ Service = (*service)(nil)
@@ -45,7 +44,8 @@ func (s *service) validateRequiredFiles() error {
 
 	missingFiles := getMissingFiles(s.propertyFiles, files)
 	if len(missingFiles) > 0 {
-		return fmt.Errorf("missing required files: %v", missingFiles)
+		fmt.Printf("Archivos de configuración faltantes: %v\n", missingFiles)
+		return nil
 	}
 	return nil
 }
@@ -94,14 +94,10 @@ func (s *service) getPropertyFileName() string {
 }
 
 func getPropertyFiles() []string {
-	requiredFiles := []string{
-		"application.yaml",
-		"application-local.yaml",
-		"application-prod.yaml",
-	}
+	requiredFiles := []string{"application.yaml"}
 	scopeFile := fmt.Sprintf("application-%s.yaml", app_profile.GetScopeValue())
-
-	if scopeFile != "application-local.yaml" && scopeFile != "application-prod.yaml" {
+	availableFiles, _ := file_utils.ListFiles(getConfigPath())
+	if contains(availableFiles, scopeFile) {
 		requiredFiles = append(requiredFiles, scopeFile)
 	}
 
@@ -164,6 +160,8 @@ func processConfigValues(config map[string]interface{}) (map[string]interface{},
 			config[key] = processed
 		case string:
 			config[key] = resolveEnvValue(v)
+		case bool:
+			config[key] = v
 		}
 	}
 	return config, nil

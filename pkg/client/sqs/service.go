@@ -77,7 +77,7 @@ func (s *service) DeleteMessage(ctx context.Context, receiptHandle string) error
 		}
 
 		lastErr = err
-		s.logger.Warn(ctx, map[string]interface{}{
+		s.logger.Warn(ctx, "No se pudo eliminar el mensaje", map[string]interface{}{
 			"attempt":       attempt,
 			"error":         err.Error(),
 			"receiptHandle": receiptHandle,

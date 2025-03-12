@@ -58,8 +58,8 @@ func (l *service) Debug(ctx context.Context, fields map[string]interface{}) {
 	l.Log.WithContext(ctx).WithFields(fields).Debug()
 }
 
-func (l *service) Warn(ctx context.Context, fields map[string]interface{}) {
-	l.Log.WithContext(ctx).WithFields(fields).Warn()
+func (l *service) Warn(ctx context.Context, msg string, fields map[string]interface{}) {
+	l.Log.WithContext(ctx).WithFields(fields).Warn(msg)
 }
 
 func (l *service) FatalError(ctx context.Context, err error, fields map[string]interface{}) {

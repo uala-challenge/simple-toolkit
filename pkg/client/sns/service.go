@@ -63,7 +63,7 @@ func (s *service) Accept(ctx context.Context, message interface{}) error {
 		}
 
 		lastErr = err
-		s.logger.Warn(ctx, map[string]interface{}{
+		s.logger.Warn(ctx, "No se pudo publicar el mensaje", map[string]interface{}{
 			"attempt":   attempt,
 			"error":     err.Error(),
 			"topic_arn": s.config.TopicARN,

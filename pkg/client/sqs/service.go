@@ -16,8 +16,18 @@ type service struct {
 
 var _ Service = (*service)(nil)
 
-func NewService(acf aws.Config, cfg Config, logger log.Service) *service {
-	client := sqs.NewFromConfig(acf)
+func NewService(acf aws.Config, cfg Config, logger log.Service) Service {
+	client := sqs.NewFromConfig(acf, func(o *sqs.Options) {
+		if cfg.BaseEndpoint != "" {
+			o.BaseEndpoint = aws.String(cfg.BaseEndpoint)
+			logger.Info(context.TODO(), "🔧 Configurando SQS con LocalStack", map[string]interface{}{
+				"endpoint": cfg.BaseEndpoint,
+			})
+		} else {
+			logger.Info(context.TODO(), "🚀 Configurando SQS con AWS", nil)
+		}
+	})
+
 	return &service{
 		client: client,
 		config: cfg,

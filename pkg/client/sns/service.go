@@ -18,8 +18,18 @@ type service struct {
 
 var _ Service = (*service)(nil)
 
-func NewService(acf aws.Config, cfg Config, logger log.Service) *service {
-	client := sns.NewFromConfig(acf)
+func NewService(acf aws.Config, cfg Config, logger log.Service) Service {
+	client := sns.NewFromConfig(acf, func(o *sns.Options) {
+		if cfg.BaseEndpoint != "" {
+			o.BaseEndpoint = aws.String(cfg.BaseEndpoint)
+			logger.Info(context.TODO(), "🔧 Configurando SNS con LocalStack", map[string]interface{}{
+				"endpoint": cfg.BaseEndpoint,
+			})
+		} else {
+			logger.Info(context.TODO(), "🚀 Configurando SNS con AWS", nil)
+		}
+	})
+
 	return &service{
 		client: client,
 		config: cfg,

@@ -19,7 +19,7 @@ var _ Service = (*service)(nil)
 var once sync.Once
 var l *logrus.Logger
 
-func NewService(c Config) *service {
+func NewService(c Config) Service {
 	once.Do(func() {
 		l = logrus.New()
 		l.Formatter = &ecslogrus.Formatter{}

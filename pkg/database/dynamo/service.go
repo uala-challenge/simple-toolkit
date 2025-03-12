@@ -3,7 +3,6 @@ package dynamo
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
@@ -19,9 +18,13 @@ type service struct {
 
 var _ Service = (*service)(nil)
 
-func NewService(acf aws.Config, cfg Config, logger log.Service) *service {
-	options := dynamodb.Options{
-		Region: acf.Region,
+func NewService(acf aws.Config, cfg Config, logger log.Service) Service {
+	options := dynamodb.Options{}
+
+	if cfg.Region != "" {
+		options.Region = cfg.Region
+	} else {
+		options.Region = acf.Region
 	}
 
 	if cfg.Endpoint != "" {
@@ -38,13 +41,9 @@ func NewService(acf aws.Config, cfg Config, logger log.Service) *service {
 }
 
 func (s *service) PutItem(ctx context.Context, item map[string]interface{}) error {
-	if s == nil {
-		return errors.New(ErrorServiceNotEnabled)
-	}
-
 	av, err := marshalMap(item)
 	if err != nil {
-		return fmt.Errorf("error al serializar el item: %w", err)
+		return fmt.Errorf(SerializationError, err)
 	}
 
 	_, err = s.client.PutItem(ctx, &dynamodb.PutItemInput{
@@ -56,17 +55,13 @@ func (s *service) PutItem(ctx context.Context, item map[string]interface{}) erro
 		return err
 	}
 
-	s.logger.Info(ctx, "Ítem insertado con éxito en DynamoDB", map[string]interface{}{
+	s.logger.Info(ctx, "Ítem insertado en DynamoDB", map[string]interface{}{
 		"table": s.config.TableName,
 	})
 	return nil
 }
 
 func (s *service) GetItem(ctx context.Context, key map[string]interface{}) (map[string]interface{}, error) {
-	if s == nil {
-		return nil, errors.New(ErrorServiceNotEnabled)
-	}
-
 	av, err := marshalMap(key)
 	if err != nil {
 		return nil, fmt.Errorf(SerializationError, err)
@@ -92,10 +87,6 @@ func (s *service) GetItem(ctx context.Context, key map[string]interface{}) (map[
 }
 
 func (s *service) UpdateItem(ctx context.Context, key map[string]interface{}, update map[string]interface{}) error {
-	if s == nil {
-		return errors.New(ErrorServiceNotEnabled)
-	}
-
 	keyAV, err := marshalMap(key)
 	if err != nil {
 		return fmt.Errorf(SerializationError, err)
@@ -103,33 +94,36 @@ func (s *service) UpdateItem(ctx context.Context, key map[string]interface{}, up
 
 	updateAV, err := marshalMap(update)
 	if err != nil {
-		return fmt.Errorf("error al serializar los datos de actualización: %w", err)
+		return fmt.Errorf(SerializationError, err)
 	}
 
+	updateExpression := "SET "
+	expressionAttributes := make(map[string]types.AttributeValue)
+	counter := 0
+	for attr, val := range updateAV {
+		counter++
+		placeholder := fmt.Sprintf("#attr%d", counter)
+		updateExpression += fmt.Sprintf("%s = :%s, ", placeholder, attr)
+		expressionAttributes[placeholder] = val
+	}
+	updateExpression = updateExpression[:len(updateExpression)-2] // Remover la última coma
+
 	_, err = s.client.UpdateItem(ctx, &dynamodb.UpdateItemInput{
-		TableName: &s.config.TableName,
-		Key:       keyAV,
-		AttributeUpdates: map[string]types.AttributeValueUpdate{
-			"data": {
-				Value:  updateAV["data"],
-				Action: types.AttributeActionPut,
-			},
-		},
+		TableName:                 &s.config.TableName,
+		Key:                       keyAV,
+		UpdateExpression:          &updateExpression,
+		ExpressionAttributeValues: expressionAttributes,
 	})
 	if err != nil {
 		s.logger.Error(ctx, err, "Error al actualizar item en DynamoDB", nil)
 		return err
 	}
 
-	s.logger.Info(ctx, "Ítem actualizado con éxito en DynamoDB", nil)
+	s.logger.Info(ctx, "Ítem actualizado en DynamoDB", nil)
 	return nil
 }
 
 func (s *service) DeleteItem(ctx context.Context, key map[string]interface{}) error {
-	if s == nil {
-		return errors.New(ErrorServiceNotEnabled)
-	}
-
 	av, err := marshalMap(key)
 	if err != nil {
 		return fmt.Errorf(SerializationError, err)
@@ -140,11 +134,11 @@ func (s *service) DeleteItem(ctx context.Context, key map[string]interface{}) er
 		Key:       av,
 	})
 	if err != nil {
-		s.logger.Error(ctx, err, "Error al eliminar item de DynamoDB", nil)
+		s.logger.Error(ctx, err, "Error al eliminar item en DynamoDB", nil)
 		return err
 	}
 
-	s.logger.Info(ctx, "Ítem eliminado con éxito en DynamoDB", nil)
+	s.logger.Info(ctx, "Ítem eliminado en DynamoDB", nil)
 	return nil
 }
 

@@ -19,6 +19,7 @@ type Message struct {
 }
 
 type Config struct {
+	BaseEndpoint    string `json:"base_endpoint"`
 	QueueURL        string `json:"queue_url"`
 	MaxRetries      int    `json:"max_retries"`
 	MaxMessages     int32  `json:"max_messages"`

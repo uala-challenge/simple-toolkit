@@ -1,9 +1,10 @@
 package simple_router
 
 import (
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/uala-challenge/simple-toolkit/pkg/utilities/log"
-	"net/http"
 )
 
 const (

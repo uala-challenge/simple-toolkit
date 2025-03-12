@@ -2,10 +2,11 @@ package sqs
 
 import (
 	"context"
+	"time"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/uala-challenge/simple-toolkit/pkg/utilities/log"
-	"time"
 )
 
 type service struct {

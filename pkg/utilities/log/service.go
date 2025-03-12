@@ -2,12 +2,13 @@ package log
 
 import (
 	"context"
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
-	"go.elastic.co/ecslogrus"
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	"go.elastic.co/ecslogrus"
 )
 
 type service struct {

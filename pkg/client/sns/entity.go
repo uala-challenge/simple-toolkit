@@ -5,7 +5,7 @@ import (
 )
 
 type Service interface {
-	Accept(ctx context.Context, message interface{}) error
+	PublishMessage(ctx context.Context, message interface{}) error
 }
 
 type Config struct {

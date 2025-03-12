@@ -69,3 +69,31 @@ jobs:
 
       - name: Run Tests
         run: go test -v ./...
+
+
+  sonarqube:
+    name: SonarQube Scan
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          check-latest: true
+
+      - name: Build project
+        run: go build ./...
+
+      - name: Run SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5.0.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.projectKey=tu_proyecto
+            -Dsonar.go.coverage.reportPaths=coverage.out

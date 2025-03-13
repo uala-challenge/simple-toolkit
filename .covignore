@@ -1,0 +1,2 @@
+pkg/client/sns/mock/.*
+pkg/client/sqs/mock/.*

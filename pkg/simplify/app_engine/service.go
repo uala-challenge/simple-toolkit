@@ -29,7 +29,7 @@ func NewApp() *Engine {
 	return &Engine{
 		App:                simple_router.NewService(c.Router, l),
 		Log:                l,
-		SQSService:         createSQSService(awsCfg, c.SQSConfig, l),
+		SQSService:         createSQSService(awsCfg, c.SQSConfig, l, tracerProvider.Tracer("sqs-service")),
 		SNSService:         createSNSService(awsCfg, c.SNSConfig, l, tracerProvider.Tracer("sns-service")),
 		DynamoDBService:    createDynamoService(awsCfg, c.DynamoDBConfig, l),
 		RedisService:       createRedisService(c.RedisConfig, l),
@@ -45,11 +45,11 @@ func creteLog(c log.Config) log.Service {
 		Path:  c.Path,
 	})
 }
-func createSQSService(acf aws.Config, cfg *sqs.Config, logger log.Service) sqs.Service {
+func createSQSService(acf aws.Config, cfg *sqs.Config, logger log.Service, tracer trace.Tracer) sqs.Service {
 	if cfg == nil {
 		return nil
 	}
-	return sqs.NewService(acf, *cfg, logger)
+	return sqs.NewService(acf, *cfg, logger, tracer)
 }
 
 func createSNSService(acf aws.Config, cfg *sns.Config, logger log.Service, tracer trace.Tracer) sns.Service {

@@ -26,7 +26,7 @@ func (m *MockSNSClient) Publish(ctx context.Context, params *sns.PublishInput, o
 	return args.Get(0).(*sns.PublishOutput), args.Error(1)
 }
 
-func TestCriateClienteWithErrorPublish(t *testing.T) {
+func TestCreateClienteWithErrorPublish(t *testing.T) {
 	mockClient := new(MockSNSClient)
 	mockLogger := log.NewService(log.Config{Level: "info"})
 	mockTracer := otel.GetTracerProvider().Tracer("sns-test")
@@ -57,7 +57,7 @@ func TestCriateClienteWithErrorPublish(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestCriateClienteWithError(t *testing.T) {
+func TestCreateClienteWithError(t *testing.T) {
 	mockClient := new(MockSNSClient)
 	mockLogger := log.NewService(log.Config{Level: "info"})
 	mockTracer := otel.GetTracerProvider().Tracer("sns-test") // ✅ Solución
@@ -116,21 +116,6 @@ func TestPublishMessage_Success(t *testing.T) {
 	mockClient.AssertExpectations(t)
 }
 
-func newServiceWithClient(client snsClient, cfg Config, logger log.Service, tracer trace.Tracer) Service {
-	retryDelays := make([]time.Duration, cfg.MaxRetries)
-	for i := 0; i < cfg.MaxRetries; i++ {
-		retryDelays[i] = time.Duration(1<<i) * time.Second
-	}
-
-	return &service{
-		client:      client,
-		config:      cfg,
-		logger:      logger,
-		tracer:      tracer,
-		retryDelays: retryDelays,
-	}
-}
-
 func TestPublishMessage_JSONMarshalError(t *testing.T) {
 	mockClient := new(MockSNSClient)
 	mockLogger := log.NewService(log.Config{Level: "info"})
@@ -151,4 +136,19 @@ func TestPublishMessage_JSONMarshalError(t *testing.T) {
 
 	assert.Error(t, err)
 	mockClient.AssertNotCalled(t, "Publish")
+}
+
+func newServiceWithClient(client snsClient, cfg Config, logger log.Service, tracer trace.Tracer) Service {
+	retryDelays := make([]time.Duration, cfg.MaxRetries)
+	for i := 0; i < cfg.MaxRetries; i++ {
+		retryDelays[i] = time.Duration(1<<i) * time.Second
+	}
+
+	return &service{
+		client:      client,
+		config:      cfg,
+		logger:      logger,
+		tracer:      tracer,
+		retryDelays: retryDelays,
+	}
 }

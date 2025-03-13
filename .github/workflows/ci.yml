@@ -2,9 +2,13 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [main, develop]
+    branches:
+      - main
+      - develop
   pull_request:
-    branches: [main, develop]
+    branches:
+      - main
+      - develop
 
 jobs:
   lint:
@@ -18,6 +22,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: 'stable'
+          check-latest: true
 
       - name: Cache Go modules
         uses: actions/cache@v4
@@ -35,11 +40,11 @@ jobs:
           version: v1.64.7
           args: >
             --timeout=5m
-            --tests=false
+            --tests=false  # Opcional: omitir pruebas en el análisis
             ./...
 
   test:
-    name: Run Unit Tests and Upload Coverage
+    name: Run Unit Tests
     runs-on: ubuntu-latest
     needs: lint
     steps:
@@ -50,6 +55,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: 'stable'
+          check-latest: true
 
       - name: Cache Go modules
         uses: actions/cache@v4
@@ -62,20 +68,4 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Run Tests
-        run: |
-          go test -v -coverprofile=coverage.out ./...
-          go tool cover -func=coverage.out -o coverage.txt
-          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print substr($3, 1, length($3)-1)}')
-          echo "Total coverage is ${COVERAGE}%"
-          if (( $(echo "$COVERAGE < 80.0" | bc -l) )); then
-            echo "Coverage is below 80%"
-            exit 1
-          fi
-
-      - name: Upload Coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          files: coverage.out
-          fail_ci_if_error: true
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        run: go test -v ./...

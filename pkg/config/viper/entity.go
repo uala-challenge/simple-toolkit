@@ -3,10 +3,11 @@ package viper
 import (
 	"sync"
 
+	"github.com/uala-challenge/simple-toolkit/pkg/client/dynamo"
+	"github.com/uala-challenge/simple-toolkit/pkg/client/redis"
+
 	"github.com/uala-challenge/simple-toolkit/pkg/client/sns"
 	"github.com/uala-challenge/simple-toolkit/pkg/client/sqs"
-	"github.com/uala-challenge/simple-toolkit/pkg/database/dynamo"
-	"github.com/uala-challenge/simple-toolkit/pkg/database/redis"
 	"github.com/uala-challenge/simple-toolkit/pkg/simplify/simple_router"
 	"github.com/uala-challenge/simple-toolkit/pkg/utilities/log"
 )

@@ -3,18 +3,20 @@ package app_engine
 import (
 	"context"
 
-	"github.com/sirupsen/logrus"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/sns"
+	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/redis/go-redis/v9"
+	"github.com/uala-challenge/simple-toolkit/pkg/client/dynamo"
+	rd "github.com/uala-challenge/simple-toolkit/pkg/client/redis"
+	sns2 "github.com/uala-challenge/simple-toolkit/pkg/client/sns"
 
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/trace"
+	"github.com/sirupsen/logrus"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/uala-challenge/simple-toolkit/pkg/client/sns"
-	"github.com/uala-challenge/simple-toolkit/pkg/client/sqs"
+	sqs2 "github.com/uala-challenge/simple-toolkit/pkg/client/sqs"
 	"github.com/uala-challenge/simple-toolkit/pkg/config/viper"
-	"github.com/uala-challenge/simple-toolkit/pkg/database/dynamo"
-	"github.com/uala-challenge/simple-toolkit/pkg/database/redis"
 	"github.com/uala-challenge/simple-toolkit/pkg/simplify/simple_router"
 	"github.com/uala-challenge/simple-toolkit/pkg/utilities/log"
 )
@@ -27,13 +29,12 @@ func NewApp() *Engine {
 	}
 	l := creteLog(c.Log)
 	awsCfg := loadAWSConfig(c.AwsRegion, l)
-	tracerProvider := otel.GetTracerProvider()
 	return &Engine{
 		App:                simple_router.NewService(c.Router, l),
 		Log:                l,
-		SQSService:         createSQSService(awsCfg, c.SQSConfig, l, tracerProvider.Tracer("sqs-service")),
-		SNSService:         createSNSService(awsCfg, c.SNSConfig, l, tracerProvider.Tracer("sns-service")),
-		DynamoDBService:    createDynamoService(awsCfg, c.DynamoDBConfig, l),
+		SQSService:         createSQSService(awsCfg, c.SQSConfig),
+		SNSService:         createSNSClient(awsCfg, c.SNSConfig),
+		DynamoDBService:    createDynamoClient(awsCfg, c.DynamoDBConfig),
 		RedisService:       createRedisService(c.RedisConfig, l),
 		RepositoriesConfig: c.Repositories,
 		UsesCasesConfig:    c.UsesCases,
@@ -48,32 +49,37 @@ func creteLog(c log.Config) log.Service {
 		Path:  c.Path,
 	}, logrus.New())
 }
-func createSQSService(acf aws.Config, cfg *sqs.Config, logger log.Service, tracer trace.Tracer) sqs.Service {
+func createSQSService(acf aws.Config, cfg *sqs2.Config) *sqs.Client {
 	if cfg == nil {
 		return nil
 	}
-	return sqs.NewService(acf, *cfg, logger, tracer)
+	return sqs2.NewClient(acf, *cfg)
 }
 
-func createSNSService(acf aws.Config, cfg *sns.Config, logger log.Service, tracer trace.Tracer) sns.Service {
+func createSNSClient(acf aws.Config, cfg *sns2.Config) *sns.Client {
 	if cfg == nil {
 		return nil
 	}
-	return sns.NewService(acf, *cfg, logger, tracer)
+	return sns2.NewClient(acf, cfg.BaseEndpoint)
 }
 
-func createDynamoService(acf aws.Config, cfg *dynamo.Config, logger log.Service) dynamo.Service {
+func createDynamoClient(acf aws.Config, cfg *dynamo.Config) *dynamodb.Client {
 	if cfg == nil {
 		return nil
 	}
-	return dynamo.NewService(acf, *cfg, logger)
+	client := dynamo.NewClient(acf, *cfg)
+	return client
 }
 
-func createRedisService(cfg *redis.Config, logger log.Service) redis.Service {
+func createRedisService(cfg *rd.Config, l log.Service) *redis.Client {
 	if cfg == nil {
 		return nil
 	}
-	return redis.NewService(*cfg, logger)
+	client, err := rd.NewClient(*cfg)
+	if err != nil {
+		l.Error(context.Background(), err, "Error al crear cliente redis", map[string]interface{}{})
+	}
+	return client
 }
 
 func loadAWSConfig(ar string, l log.Service) aws.Config {

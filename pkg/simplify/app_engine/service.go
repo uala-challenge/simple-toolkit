@@ -3,6 +3,8 @@ package app_engine
 import (
 	"context"
 
+	"github.com/sirupsen/logrus"
+
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 
@@ -40,10 +42,11 @@ func NewApp() *Engine {
 }
 
 func creteLog(c log.Config) log.Service {
+
 	return log.NewService(log.Config{
 		Level: c.Level,
 		Path:  c.Path,
-	})
+	}, logrus.New())
 }
 func createSQSService(acf aws.Config, cfg *sqs.Config, logger log.Service, tracer trace.Tracer) sqs.Service {
 	if cfg == nil {

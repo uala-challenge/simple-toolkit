@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
@@ -32,7 +34,7 @@ func (m *MockSQSClient) DeleteMessage(ctx context.Context, params *sqs.DeleteMes
 
 func TestCreateClienteWithError(t *testing.T) {
 	mockClient := new(MockSQSClient)
-	mockLogger := log.NewService(log.Config{Level: "info"})
+	mockLogger := log.NewService(log.Config{Level: "info"}, logrus.New())
 	mockTracer := otel.GetTracerProvider().Tracer("sns-test")
 
 	awsCfg := aws.Config{
@@ -63,7 +65,7 @@ func TestCreateClienteWithError(t *testing.T) {
 
 func TestCreateClienteWithError2(t *testing.T) {
 	mockClient := new(MockSQSClient)
-	mockLogger := log.NewService(log.Config{Level: "info"})
+	mockLogger := log.NewService(log.Config{Level: "info"}, logrus.New())
 	mockTracer := otel.GetTracerProvider().Tracer("sns-test")
 
 	awsCfg := aws.Config{
@@ -94,7 +96,7 @@ func TestCreateClienteWithError2(t *testing.T) {
 
 func TestReceiveMessage_Success(t *testing.T) {
 	mockClient := new(MockSQSClient)
-	mockLogger := log.NewService(log.Config{Level: "info"})
+	mockLogger := log.NewService(log.Config{Level: "info"}, logrus.New())
 	mockTracer := otel.GetTracerProvider().Tracer("sqs-test")
 
 	cfg := Config{
@@ -133,7 +135,7 @@ func TestReceiveMessage_Success(t *testing.T) {
 
 func TestReceiveMessage_NoMessages(t *testing.T) {
 	mockClient := new(MockSQSClient)
-	mockLogger := log.NewService(log.Config{Level: "info"})
+	mockLogger := log.NewService(log.Config{Level: "info"}, logrus.New())
 	mockTracer := otel.GetTracerProvider().Tracer("sqs-test")
 
 	cfg := Config{
@@ -162,7 +164,7 @@ func TestReceiveMessage_NoMessages(t *testing.T) {
 
 func TestReceiveMessage_Error(t *testing.T) {
 	mockClient := new(MockSQSClient)
-	mockLogger := log.NewService(log.Config{Level: "info"})
+	mockLogger := log.NewService(log.Config{Level: "info"}, logrus.New())
 	mockTracer := otel.GetTracerProvider().Tracer("sqs-test")
 
 	cfg := Config{
@@ -189,7 +191,7 @@ func TestReceiveMessage_Error(t *testing.T) {
 
 func TestDeleteMessage_Success(t *testing.T) {
 	mockClient := new(MockSQSClient)
-	mockLogger := log.NewService(log.Config{Level: "info"})
+	mockLogger := log.NewService(log.Config{Level: "info"}, logrus.New())
 	mockTracer := otel.GetTracerProvider().Tracer("sqs-test")
 
 	cfg := Config{
@@ -216,7 +218,7 @@ func TestDeleteMessage_Success(t *testing.T) {
 
 func TestDeleteMessage_Failure(t *testing.T) {
 	mockClient := new(MockSQSClient)
-	mockLogger := log.NewService(log.Config{Level: "info"})
+	mockLogger := log.NewService(log.Config{Level: "info"}, logrus.New())
 	mockTracer := otel.GetTracerProvider().Tracer("sqs-test")
 
 	cfg := Config{

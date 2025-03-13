@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"go.opentelemetry.io/otel/trace"
 
 	"go.opentelemetry.io/otel"
@@ -28,7 +30,7 @@ func (m *MockSNSClient) Publish(ctx context.Context, params *sns.PublishInput, o
 
 func TestCreateClienteWithErrorPublish(t *testing.T) {
 	mockClient := new(MockSNSClient)
-	mockLogger := log.NewService(log.Config{Level: "info"})
+	mockLogger := log.NewService(log.Config{Level: "debug"}, logrus.New())
 	mockTracer := otel.GetTracerProvider().Tracer("sns-test")
 
 	awsCfg := aws.Config{
@@ -59,8 +61,8 @@ func TestCreateClienteWithErrorPublish(t *testing.T) {
 
 func TestCreateClienteWithError(t *testing.T) {
 	mockClient := new(MockSNSClient)
-	mockLogger := log.NewService(log.Config{Level: "info"})
-	mockTracer := otel.GetTracerProvider().Tracer("sns-test") // ✅ Solución
+	mockLogger := log.NewService(log.Config{Level: "trace"}, logrus.New())
+	mockTracer := otel.GetTracerProvider().Tracer("sns-test")
 
 	awsCfg := aws.Config{
 		Region: "us-east-1",
@@ -89,8 +91,8 @@ func TestCreateClienteWithError(t *testing.T) {
 }
 
 func TestPublishMessage_Success(t *testing.T) {
-	mockClient := new(MockSNSClient) // ✅ Creamos el mock
-	mockLogger := log.NewService(log.Config{Level: "info"})
+	mockClient := new(MockSNSClient)
+	mockLogger := log.NewService(log.Config{Level: "info"}, logrus.New())
 	mockTracer := otel.GetTracerProvider().Tracer("sns-test")
 
 	cfg := Config{
@@ -118,7 +120,7 @@ func TestPublishMessage_Success(t *testing.T) {
 
 func TestPublishMessage_JSONMarshalError(t *testing.T) {
 	mockClient := new(MockSNSClient)
-	mockLogger := log.NewService(log.Config{Level: "info"})
+	mockLogger := log.NewService(log.Config{Level: "info"}, logrus.New())
 	mockTracer := otel.GetTracerProvider().Tracer("sns-test")
 
 	cfg := Config{

@@ -10,7 +10,7 @@ import (
 )
 
 type Engine struct {
-	App                simple_router.Service
+	App                *simple_router.App
 	Log                log.Service
 	SQSService         sqs.Service
 	SNSService         sns.Service

@@ -1,5 +1,6 @@
-pkg/client/sns/mock/.*
-pkg/client/sqs/mock/.*
-pkg/database/.*
-pkg/simplify/.*
-pkg/config/.*
+**/pkg/utilities/log/mock/**
+**/mock/**
+**/generated/**
+**/*_test.go
+**/simplify/**
+**/config/.*

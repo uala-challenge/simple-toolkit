@@ -1,0 +1,6 @@
+ignore:
+  - pkg/client/sns/mock/.*
+  - pkg/client/sqs/mock/.*
+  - pkg/database/.*
+  - pkg/simplify/.*
+  - pkg/config/.*

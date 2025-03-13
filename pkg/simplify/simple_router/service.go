@@ -16,7 +16,7 @@ import (
 
 var _ Service = (*App)(nil)
 
-func NewService(c Config, l log.Service) Service {
+func NewService(c Config, l log.Service) *App {
 	routes := initRoutes()
 	if routes == nil {
 		panic("Router initialization failed")
@@ -31,10 +31,6 @@ func NewService(c Config, l log.Service) Service {
 
 func (a *App) Run() error {
 	return http.ListenAndServe(a.Port, a.Router)
-}
-
-func (a *App) RegisterRoute(pattern string, handler http.HandlerFunc) {
-	a.Router.HandleFunc(pattern, handler)
 }
 
 func registerPprofRoutes(router chi.Router) {

@@ -2,13 +2,14 @@ package viper
 
 import (
 	"fmt"
+	"os"
+	"strings"
+
 	"github.com/fsnotify/fsnotify"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/viper"
 	"github.com/uala-challenge/simple-toolkit/pkg/utilities/app_profile"
 	"github.com/uala-challenge/simple-toolkit/pkg/utilities/file_utils"
-	"os"
-	"strings"
 )
 
 var _ Service = (*service)(nil)

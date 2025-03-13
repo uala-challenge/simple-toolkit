@@ -2,12 +2,12 @@ package log
 
 import (
 	"context"
+	"os"
+	"strings"
+
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"go.elastic.co/ecslogrus"
-	"os"
-	"strings"
-	"sync"
 )
 
 type service struct {
@@ -16,24 +16,18 @@ type service struct {
 
 var _ Service = (*service)(nil)
 
-var once sync.Once
-var l *logrus.Logger
+func NewService(c Config, l *logrus.Logger) Service {
+	l.Formatter = &ecslogrus.Formatter{}
+	l.Level = loggerLevel(c.Level)
 
-func NewService(c Config) Service {
-	once.Do(func() {
-		l = logrus.New()
-		l.Formatter = &ecslogrus.Formatter{}
-		l.Level = loggerLevel(c.Level)
-
-		fileLog := c.Path
-		file, err := os.OpenFile(fileLog, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-		if err == nil {
-			l.SetOutput(file)
-		} else {
-			l.Warn("No se pudo abrir el archivo de log, usando salida estándar")
-		}
-		l.Info("app started...")
-	})
+	fileLog := c.Path
+	file, err := os.OpenFile(fileLog, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err == nil {
+		l.SetOutput(file)
+	} else {
+		l.Warn("No se pudo abrir el archivo de log, usando salida estándar")
+	}
+	l.Info("app started...")
 	return &service{
 		Log: l,
 	}
@@ -62,8 +56,7 @@ func (l *service) Warn(ctx context.Context, msg string, fields map[string]interf
 }
 
 func (l *service) FatalError(ctx context.Context, err error, fields map[string]interface{}) {
-	l.Log.WithContext(ctx).WithFields(fields).Error(err)
-	os.Exit(1)
+	l.Log.WithContext(ctx).WithFields(fields).Fatal(err)
 }
 
 func (l *service) WrapError(err error, msg string) error {

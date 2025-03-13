@@ -1,6 +1,10 @@
 package simple_router
 
 import (
+	"net/http"
+	"net/http/pprof"
+	"os"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/uala-challenge/simple-toolkit/pkg/simplify/simple_router/docsify"
@@ -8,9 +12,6 @@ import (
 	"github.com/uala-challenge/simple-toolkit/pkg/simplify/simple_router/swagger"
 	"github.com/uala-challenge/simple-toolkit/pkg/utilities/app_profile"
 	"github.com/uala-challenge/simple-toolkit/pkg/utilities/log"
-	"net/http"
-	"net/http/pprof"
-	"os"
 )
 
 var _ Service = (*App)(nil)

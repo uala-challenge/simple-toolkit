@@ -7,39 +7,67 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
+	"github.com/google/uuid"
 	"github.com/uala-challenge/simple-toolkit/pkg/utilities/log"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
+type snsClient interface {
+	Publish(ctx context.Context, params *sns.PublishInput, optFns ...func(*sns.Options)) (*sns.PublishOutput, error)
+}
+
 type service struct {
-	client *sns.Client
-	config Config
-	logger log.Service
+	client      snsClient
+	config      Config
+	logger      log.Service
+	tracer      trace.Tracer
+	retryDelays []time.Duration
 }
 
 var _ Service = (*service)(nil)
 
-func NewService(acf aws.Config, cfg Config, logger log.Service) Service {
-	client := sns.NewFromConfig(acf, func(o *sns.Options) {
-		if cfg.BaseEndpoint != "" {
-			o.BaseEndpoint = aws.String(cfg.BaseEndpoint)
-			logger.Info(context.TODO(), "🔧 Configurando SNS con LocalStack", map[string]interface{}{
-				"endpoint": cfg.BaseEndpoint,
-			})
-		} else {
-			logger.Info(context.TODO(), "🚀 Configurando SNS con AWS", nil)
-		}
-	})
+func NewService(acf aws.Config, cfg Config, logger log.Service, tracer trace.Tracer) Service {
+	client := createSNSClient(acf, cfg, logger)
+
+	retryDelays := make([]time.Duration, cfg.MaxRetries)
+	for i := 0; i < cfg.MaxRetries; i++ {
+		retryDelays[i] = time.Duration(1<<i) * time.Second
+	}
 
 	return &service{
-		client: client,
-		config: cfg,
-		logger: logger,
+		client:      client,
+		config:      cfg,
+		logger:      logger,
+		tracer:      tracer,
+		retryDelays: retryDelays,
 	}
 }
 
-func (s *service) Accept(ctx context.Context, message interface{}) error {
-	s.logger.Info(ctx, "📢 Publicando mensaje en SNS", map[string]interface{}{
-		"topic_arn": s.config.TopicARN,
+func createSNSClient(acf aws.Config, cfg Config, logger log.Service) snsClient {
+	return sns.NewFromConfig(acf, func(o *sns.Options) {
+		if cfg.BaseEndpoint != "" {
+			o.BaseEndpoint = aws.String(cfg.BaseEndpoint)
+			logger.Info(context.TODO(), "Configurando SNS con LocalStack", map[string]interface{}{
+				"endpoint": cfg.BaseEndpoint,
+			})
+		} else {
+			logger.Info(context.TODO(), "Configurando SNS con AWS", nil)
+		}
+	})
+}
+
+func (s *service) PublishMessage(ctx context.Context, message interface{}) error {
+	ctx, span := s.tracer.Start(ctx, "Publish SNS Message")
+	defer span.End()
+
+	messageID := uuid.New().String()
+	span.SetAttributes(attribute.String("sns.message_id", messageID))
+	span.SetAttributes(attribute.String("sns.topic_arn", s.config.TopicARN))
+
+	s.logger.Info(ctx, "Publicando mensaje en SNS", map[string]interface{}{
+		"message_id": messageID,
+		"topic_arn":  s.config.TopicARN,
 	})
 
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(s.config.TimeoutSeconds)*time.Second)
@@ -49,11 +77,6 @@ func (s *service) Accept(ctx context.Context, message interface{}) error {
 	if err != nil {
 		s.logger.Error(ctx, err, "Error serializando el mensaje para SNS", nil)
 		return err
-	}
-
-	retryDelays := make([]time.Duration, s.config.MaxRetries)
-	for i := 0; i < s.config.MaxRetries; i++ {
-		retryDelays[i] = time.Duration(1<<i) * time.Second
 	}
 
 	var lastErr error
@@ -73,20 +96,21 @@ func (s *service) Accept(ctx context.Context, message interface{}) error {
 		}
 
 		lastErr = err
-		s.logger.Warn(ctx, "No se pudo publicar el mensaje", map[string]interface{}{
-			"attempt":   attempt,
-			"error":     err.Error(),
-			"topic_arn": s.config.TopicARN,
+		s.logger.Warn(ctx, "Reintentando publicación de mensaje en SNS...", map[string]interface{}{
+			"attempt":    attempt,
+			"message_id": messageID,
+			"error":      err.Error(),
+			"topic_arn":  s.config.TopicARN,
 		})
 
 		if attempt < s.config.MaxRetries {
-			time.Sleep(retryDelays[attempt-1])
+			time.Sleep(s.retryDelays[attempt-1])
 		}
 	}
 
 	s.logger.Error(ctx, lastErr, "No se pudo publicar el mensaje después de intentos máximos", map[string]interface{}{
-		"topic_arn":   s.config.TopicARN,
-		"max_retries": s.config.MaxRetries,
+		"message_id": messageID,
+		"topic_arn":  s.config.TopicARN,
 	})
 	return lastErr
 }

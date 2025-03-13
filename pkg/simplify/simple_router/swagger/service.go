@@ -1,8 +1,9 @@
 package swagger
 
 import (
-	httpSwagger "github.com/swaggo/http-swagger"
 	"net/http"
+
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 type service struct {

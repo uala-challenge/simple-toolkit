@@ -25,7 +25,7 @@ type Config struct {
 	Dynamo       *dynamo.Config         `json:"dynamo" yaml:"dynamo"`
 	Redis        *redis.Config          `json:"redis" yaml:"redis"`
 	Repositories map[string]interface{} `json:"repositories" yaml:"repositories"`
-	UseCases     map[string]interface{} `json:"use_cases" yaml:"use_cases"`
+	Cases        map[string]interface{} `json:"cases" yaml:"cases"`
 	Endpoints    map[string]interface{} `json:"endpoints" yaml:"endpoints"`
 }
 

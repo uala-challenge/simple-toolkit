@@ -1,5 +1,5 @@
 package dynamo
 
 type Config struct {
-	Endpoint string `json:"endpoint"`
+	Endpoint string `json:"endpoint" yaml:"endpoint"`
 }

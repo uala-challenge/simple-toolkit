@@ -1,5 +1,5 @@
 package sqs
 
 type Config struct {
-	BaseEndpoint string `json:"base_endpoint"`
+	Endpoint string `json:"endpoint" yaml:"endpoint"`
 }

@@ -17,16 +17,16 @@ type Service interface {
 }
 
 type Config struct {
-	Router       simple_router.Config   `json:"router"`
-	Log          log.Config             `json:"log"`
-	Aws          AwsConfig              `json:"aws"`
-	SQS          *sqs.Config            `json:"sqs"`
-	SNS          *sns.Config            `json:"sns"`
-	Dynamo       *dynamo.Config         `json:"dynamo"`
-	Redis        *redis.Config          `json:"redis"`
-	Repositories map[string]interface{} `json:"repositories"`
-	UsesCases    map[string]interface{} `json:"uses"`
-	Endpoints    map[string]interface{} `json:"endpoints"`
+	Router       simple_router.Config   `json:"router" yaml:"router"`
+	Log          log.Config             `json:"log" yaml:"log"`
+	Aws          AwsConfig              `json:"aws" yaml:"aws"`
+	SQS          *sqs.Config            `json:"sqs" yaml:"sqs"`
+	SNS          *sns.Config            `json:"sns" yaml:"sns"`
+	Dynamo       *dynamo.Config         `json:"dynamo" yaml:"dynamo"`
+	Redis        *redis.Config          `json:"redis" yaml:"redis"`
+	Repositories map[string]interface{} `json:"repositories" yaml:"repositories"`
+	UseCases     map[string]interface{} `json:"use_cases" yaml:"use_cases"`
+	Endpoints    map[string]interface{} `json:"endpoints" yaml:"endpoints"`
 }
 
 type AwsConfig struct {

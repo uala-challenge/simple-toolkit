@@ -40,7 +40,7 @@ func NewApp() *Engine {
 		DynamoDBClient:     createDynamoClient(awsCfg, c.Dynamo),
 		RedisClient:        createRedisService(c.Redis, l),
 		RepositoriesConfig: c.Repositories,
-		UsesCasesConfig:    c.UsesCases,
+		UsesCasesConfig:    c.UseCases,
 		HandlerConfig:      c.Endpoints,
 	}
 }

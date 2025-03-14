@@ -21,7 +21,7 @@ func NewService() *service {
 // @Produce      json
 // @Success      200  {string}  string "OK"
 // @Failure      404  {string}  string "Not Found"
-// @Router       /docs/* [get]
+// @Router       /documentation-tech/* [get]
 func (s *service) Apply() http.HandlerFunc {
-	return http.StripPrefix("/docs", http.FileServer(http.Dir("./docs"))).ServeHTTP
+	return http.StripPrefix("/documentation-tech", http.FileServer(http.Dir("./docs"))).ServeHTTP
 }

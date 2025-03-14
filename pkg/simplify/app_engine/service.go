@@ -2,6 +2,8 @@ package app_engine
 
 import (
 	"context"
+	"fmt"
+	"github.com/mitchellh/mapstructure"
 
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
@@ -90,4 +92,19 @@ func loadAWSConfig(ar viper.AwsConfig, l log.Service) aws.Config {
 		l.FatalError(context.Background(), err, map[string]interface{}{})
 	}
 	return awsCfg
+}
+
+func GetConfig[O any](c map[string]interface{}) O {
+	h := *new(O)
+	cfg := &mapstructure.DecoderConfig{
+		Metadata: nil,
+		Result:   &h,
+		TagName:  "json",
+	}
+	decoder, _ := mapstructure.NewDecoder(cfg)
+	err := decoder.Decode(c)
+	if err != nil {
+		panic(fmt.Errorf("error loading configuration - cast: %w", err))
+	}
+	return h
 }

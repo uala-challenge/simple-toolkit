@@ -20,6 +20,6 @@ type App struct {
 }
 
 type Config struct {
-	Port string
-	Name string
+	Port string `json:"port"`
+	Name string `json:"name"`
 }

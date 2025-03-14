@@ -9,8 +9,7 @@ import (
 
 func TestNewService(t *testing.T) {
 	cfg := Config{
-		TableName: "UalaChallenge",
-		Endpoint:  "http://localhost:4566",
+		Endpoint: "http://localhost:4566",
 	}
 
 	awsCfg := aws.Config{}

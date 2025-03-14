@@ -12,10 +12,10 @@ import (
 type Engine struct {
 	App                *simple_router.App
 	Log                log.Service
-	SQSService         *sqs.Client
-	SNSService         *sns.Client
-	DynamoDBService    *dynamodb.Client
-	RedisService       *redis.Client
+	SQSClient          *sqs.Client
+	SNSClient          *sns.Client
+	DynamoDBClient     *dynamodb.Client
+	RedisClient        *redis.Client
 	RepositoriesConfig map[string]interface{}
 	UsesCasesConfig    map[string]interface{}
 	HandlerConfig      map[string]interface{}

@@ -28,14 +28,14 @@ func NewApp() *Engine {
 		panic(err)
 	}
 	l := creteLog(c.Log)
-	awsCfg := loadAWSConfig(c.AwsRegion, l)
+	awsCfg := loadAWSConfig(c.Aws, l)
 	return &Engine{
 		App:                simple_router.NewService(c.Router, l),
 		Log:                l,
-		SQSService:         createSQSService(awsCfg, c.SQSConfig),
-		SNSService:         createSNSClient(awsCfg, c.SNSConfig),
-		DynamoDBService:    createDynamoClient(awsCfg, c.DynamoDBConfig),
-		RedisService:       createRedisService(c.RedisConfig, l),
+		SQSClient:          createSQSService(awsCfg, c.SQS),
+		SNSClient:          createSNSClient(awsCfg, c.SNS),
+		DynamoDBClient:     createDynamoClient(awsCfg, c.Dynamo),
+		RedisClient:        createRedisService(c.Redis, l),
 		RepositoriesConfig: c.Repositories,
 		UsesCasesConfig:    c.UsesCases,
 		HandlerConfig:      c.Endpoints,
@@ -82,9 +82,9 @@ func createRedisService(cfg *rd.Config, l log.Service) *redis.Client {
 	return client
 }
 
-func loadAWSConfig(ar string, l log.Service) aws.Config {
+func loadAWSConfig(ar viper.AwsConfig, l log.Service) aws.Config {
 	awsCfg, err := config.LoadDefaultConfig(context.TODO(),
-		config.WithRegion(ar),
+		config.WithRegion(ar.Region),
 	)
 	if err != nil {
 		l.FatalError(context.Background(), err, map[string]interface{}{})

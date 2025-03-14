@@ -60,7 +60,7 @@ func createSNSClient(acf aws.Config, cfg *sns2.Config) *sns.Client {
 	if cfg == nil {
 		return nil
 	}
-	return sns2.NewClient(acf, cfg.BaseEndpoint)
+	return sns2.NewClient(acf, cfg.Endpoint)
 }
 
 func createDynamoClient(acf aws.Config, cfg *dynamo.Config) *dynamodb.Client {

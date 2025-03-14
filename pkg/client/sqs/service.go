@@ -9,8 +9,8 @@ import (
 
 func NewClient(acf aws.Config, cfg Config) *sqs.Client {
 	return sqs.NewFromConfig(acf, func(o *sqs.Options) {
-		if cfg.BaseEndpoint != "" {
-			o.BaseEndpoint = aws.String(cfg.BaseEndpoint)
+		if cfg.Endpoint != "" {
+			o.BaseEndpoint = aws.String(cfg.Endpoint)
 			fmt.Println("Configurando SQS con LocalStack")
 		} else {
 			fmt.Println("onfigurando SQS con AWS")

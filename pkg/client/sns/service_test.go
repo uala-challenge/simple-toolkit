@@ -9,16 +9,16 @@ import (
 
 func TestNewSNSClient(t *testing.T) {
 	cfg := Config{
-		BaseEndpoint: "http://localhost:4566",
+		Endpoint: "http://localhost:4566",
 	}
 	awsCfg := aws.Config{}
-	client := NewClient(awsCfg, cfg.BaseEndpoint)
+	client := NewClient(awsCfg, cfg.Endpoint)
 	assert.NotNil(t, client, "El cliente SNS no debería ser nil")
 }
 
 func TestNewSNSClientNoBaseEndpoint(t *testing.T) {
 	cfg := Config{}
 	awsCfg := aws.Config{}
-	client := NewClient(awsCfg, cfg.BaseEndpoint)
+	client := NewClient(awsCfg, cfg.Endpoint)
 	assert.NotNil(t, client, "El cliente SNS no debería ser nil")
 }

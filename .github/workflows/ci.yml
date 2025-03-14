@@ -65,12 +65,28 @@ jobs:
         run: |
           go test -coverprofile=coverage.out ./...
 
+      - name: Debug Coverage Report
+        run: |
+          if [ -f coverage.out ]; then
+            echo "Coverage report generated successfully."
+            echo "First 20 lines of coverage.out:"
+            head -20 coverage.out
+          else
+            echo "coverage.out was NOT generated!"
+            exit 1
+          fi
+
       - name: Run SonarCloud Scan
         run: |
-          sonar-scanner \
-            -Dsonar.organization=uala-challenge \
-            -Dsonar.projectKey=uala-challenge_simple-toolkit \
-            -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
-            -Dsonar.go.coverage.reportPaths=coverage.out \
-            -Dsonar.verbose=true
+          if [ -f coverage.out ]; then
+            sonar-scanner \
+              -Dsonar.organization=uala-challenge \
+              -Dsonar.projectKey=uala-challenge_simple-toolkit \
+              -Dsonar.host.url=https://sonarcloud.io \
+              -Dsonar.token=${{ secrets.SONAR_TOKEN }} \
+              -Dsonar.go.coverage.reportPaths=coverage.out \
+              -Dsonar.verbose=true
+          else
+            echo "Skipping SonarCloud scan because coverage.out was not generated."
+            exit 1
+          fi

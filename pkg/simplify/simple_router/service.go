@@ -18,10 +18,6 @@ var _ Service = (*App)(nil)
 
 func NewService(c Config, l log.Service) *App {
 	routes := initRoutes()
-	if routes == nil {
-		panic("Router initialization failed")
-	}
-
 	return &App{
 		Router: routes,
 		Port:   setPort(c.Port),
@@ -41,7 +37,7 @@ func registerPprofRoutes(router chi.Router) {
 	pprofMux.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
 	pprofMux.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
 
-	router.Mount("/debug/pprof", http.StripPrefix("/debug/pprof", pprofMux))
+	router.Mount("/debug", pprofMux)
 }
 
 func initRoutes() *chi.Mux {
@@ -49,11 +45,10 @@ func initRoutes() *chi.Mux {
 	r.Use(middleware.Logger)
 	r.Get("/ping", ping.NewService().Apply())
 
-	if !app_profile.IsProdProfile() {
+	if app_profile.IsLocalProfile() {
 		r.Mount("/swagger", swagger.NewService().Apply())
 		r.Handle("/documentation-tech/*", docsify.NewService().Apply())
 	}
-
 	registerPprofRoutes(r)
 	return r
 }

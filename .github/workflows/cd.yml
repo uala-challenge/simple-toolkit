@@ -1,26 +1,89 @@
 name: CD Pipeline
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
-  pull_request:
-    types: [closed]
-    branches:
-      - main
+      - develop
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types:
+      - completed
 
 permissions:
   contents: write
 
 jobs:
+  versioning:
+    name: Determine Version
+    runs-on: ubuntu-latest
+    needs: sonarcloud
+    if: success()
+    outputs:
+      version: ${{ steps.versioning.outputs.version }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "github-actions@github.com"
+
+      - name: Get Latest Version
+        id: get_latest_version
+        run: |
+          LATEST_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(-rc|-test)?$' | head -n 1 || echo "v0.0.0")
+          echo "latest_version=$LATEST_TAG" >> $GITHUB_ENV
+
+      - name: Calculate New Version
+        id: versioning
+        run: |
+          VERSION=${{ env.latest_version }}
+          MAJOR=$(echo "$VERSION" | cut -d. -f1 | tr -d 'v')
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          PATCH=$(echo "$VERSION" | cut -d. -f3 | sed 's/-.*//')
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            SOURCE_BRANCH="${{ github.event.pull_request.head.ref }}"
+          else
+            SOURCE_BRANCH="${{ github.ref_name }}"
+          fi
+
+          if [[ "$SOURCE_BRANCH" == "develop" ]]; then
+            NEW_VERSION="v$MAJOR.$MINOR.$((PATCH+1))-test"
+          elif [[ "$SOURCE_BRANCH" =~ ^fix/.* || "$SOURCE_BRANCH" =~ ^hotfix/.* ]]; then
+            NEW_VERSION="v$MAJOR.$MINOR.$((PATCH+1))-test"
+          elif [[ "$SOURCE_BRANCH" == "main" && "${{ github.event_name }}" == "pull_request" ]]; then
+            NEW_VERSION="v$MAJOR.$MINOR.$((PATCH+1))-rc"
+          elif [[ "$SOURCE_BRANCH" == "main" && "${{ github.event_name }}" == "push" ]]; then
+            if [[ "$VERSION" == *-rc ]]; then
+              FINAL_VERSION=$(echo "$VERSION" | sed 's/-rc//')
+              NEW_VERSION="$FINAL_VERSION"
+            else
+              NEW_VERSION="v$MAJOR.$((MINOR+1)).0"
+            fi
+          fi
+
+          echo "Determined version: $NEW_VERSION"
+          echo "version=$NEW_VERSION" >> $GITHUB_ENV
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create Git Tag
+        run: |
+          git tag ${{ env.version }}
+          git push origin ${{ env.version }}
+
   release:
     name: Publish GitHub Release
     runs-on: ubuntu-latest
+    needs: versioning
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -28,68 +91,15 @@ jobs:
           go-version: 'stable'
           check-latest: true
 
-      - name: Cache Go modules
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-
-      - name: Determine Next Version
-        id: version
-        run: |
-          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          echo "Última versión: $latest_tag"
-
-          major=$(echo $latest_tag | cut -d'.' -f1 | sed 's/v//')
-          minor=$(echo $latest_tag | cut -d'.' -f2)
-          patch=$(echo $latest_tag | cut -d'.' -f3)
-
-          base_branch=$(jq -r '.pull_request.base.ref' "$GITHUB_EVENT_PATH" || echo "none")
-          head_branch=$(jq -r '.pull_request.head.ref' "$GITHUB_EVENT_PATH" || echo "none")
-
-          echo "Base branch: $base_branch"
-          echo "Head branch: $head_branch"
-
-          if [[ "$base_branch" == "main" ]]; then
-            if [[ "$head_branch" == "develop" ]]; then
-              minor=$((minor + 1))
-              patch=0
-            elif [[ "$head_branch" == fix/* || "$head_branch" == hotfix/* ]]; then
-              patch=$((patch + 1))
-            fi
-          fi
-
-          new_version="v$major.$minor.$patch"
-          echo "Nueva versión: $new_version"
-
-          echo "version=$new_version" >> $GITHUB_ENV
-
-      - name: Create Git Tag
-        run: |
-          git tag $version
-          git push origin $version
-
       - name: Build Binary
         run: |
           go build -o simple-toolkit ./...
-          tar -czvf simple-toolkit_${version}.tar.gz simple-toolkit
+          tar -czvf simple-toolkit_${{ needs.versioning.outputs.version }}.tar.gz simple-toolkit
 
-      - name: Create GitHub Release
+      - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ env.version }}
-          name: Release ${{ env.version }}
-          draft: false
-          prerelease: false
-          files: simple-toolkit_${{ env.version }}.tar.gz
+          files: simple-toolkit_${{ needs.versioning.outputs.version }}.tar.gz
+          tag_name: ${{ needs.versioning.outputs.version }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Verify Go Proxy Availability
-        run: |
-          sleep 10
-          curl -sSfL "https://proxy.golang.org/github.com/uala-challenge/simple-toolkit/@v/${{ env.version }}.info" || echo "Error: Go Proxy aún no tiene la versión registrada."

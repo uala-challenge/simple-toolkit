@@ -1,0 +1,95 @@
+name: CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          check-latest: true
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Determine Next Version
+        id: version
+        run: |
+          latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "Última versión: $latest_tag"
+
+          major=$(echo $latest_tag | cut -d'.' -f1 | sed 's/v//')
+          minor=$(echo $latest_tag | cut -d'.' -f2)
+          patch=$(echo $latest_tag | cut -d'.' -f3)
+
+          base_branch=$(jq -r '.pull_request.base.ref' "$GITHUB_EVENT_PATH" || echo "none")
+          head_branch=$(jq -r '.pull_request.head.ref' "$GITHUB_EVENT_PATH" || echo "none")
+
+          echo "Base branch: $base_branch"
+          echo "Head branch: $head_branch"
+
+          if [[ "$base_branch" == "main" ]]; then
+            if [[ "$head_branch" == "develop" ]]; then
+              minor=$((minor + 1))
+              patch=0
+            elif [[ "$head_branch" == fix/* || "$head_branch" == hotfix/* ]]; then
+              patch=$((patch + 1))
+            fi
+          fi
+
+          new_version="v$major.$minor.$patch"
+          echo "Nueva versión: $new_version"
+
+          echo "version=$new_version" >> $GITHUB_ENV
+
+      - name: Create Git Tag
+        run: |
+          git tag $version
+          git push origin $version
+
+      - name: Build Binary
+        run: |
+          go build -o simple-toolkit ./...
+          tar -czvf simple-toolkit_${version}.tar.gz simple-toolkit
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.version }}
+          name: Release ${{ env.version }}
+          draft: false
+          prerelease: false
+          files: simple-toolkit_${{ env.version }}.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Verify Go Proxy Availability
+        run: |
+          sleep 10
+          curl -sSfL "https://proxy.golang.org/github.com/uala-challenge/simple-toolkit/@v/${{ env.version }}.info" || echo "Error: Go Proxy aún no tiene la versión registrada."

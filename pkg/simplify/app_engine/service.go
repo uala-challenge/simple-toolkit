@@ -35,9 +35,9 @@ func NewApp() *Engine {
 	return &Engine{
 		App:                simple_router.NewService(c.Router, l),
 		Log:                l,
-		SQSClient:          createSQSService(awsCfg, c.SQS),
-		SNSClient:          createSNSClient(awsCfg, c.SNS),
-		DynamoDBClient:     createDynamoClient(awsCfg, c.Dynamo),
+		SQSClient:          createSQSService(awsCfg, c.SQS, l),
+		SNSClient:          createSNSClient(awsCfg, c.SNS, l),
+		DynamoDBClient:     createDynamoClient(awsCfg, c.Dynamo, l),
 		RedisClient:        createRedisService(c.Redis, l),
 		RepositoriesConfig: c.Repositories,
 		UsesCasesConfig:    c.Cases,
@@ -52,25 +52,25 @@ func creteLog(c log.Config) log.Service {
 		Path:  c.Path,
 	}, logrus.New())
 }
-func createSQSService(acf aws.Config, cfg *sqs2.Config) *sqs.Client {
+func createSQSService(acf aws.Config, cfg *sqs2.Config, l log.Service) *sqs.Client {
 	if cfg == nil {
 		return nil
 	}
-	return sqs2.NewClient(acf, *cfg)
+	return sqs2.NewClient(acf, *cfg, l)
 }
 
-func createSNSClient(acf aws.Config, cfg *sns2.Config) *sns.Client {
+func createSNSClient(acf aws.Config, cfg *sns2.Config, l log.Service) *sns.Client {
 	if cfg == nil {
 		return nil
 	}
-	return sns2.NewClient(acf, cfg.Endpoint)
+	return sns2.NewClient(acf, cfg.Endpoint, l)
 }
 
-func createDynamoClient(acf aws.Config, cfg *dynamo.Config) *dynamodb.Client {
+func createDynamoClient(acf aws.Config, cfg *dynamo.Config, l log.Service) *dynamodb.Client {
 	if cfg == nil {
 		return nil
 	}
-	client := dynamo.NewClient(acf, *cfg)
+	client := dynamo.NewClient(acf, *cfg, l)
 	return client
 }
 
@@ -78,7 +78,7 @@ func createRedisService(cfg *rd.Config, l log.Service) *redis.Client {
 	if cfg == nil {
 		return nil
 	}
-	client, err := rd.NewClient(*cfg)
+	client, err := rd.NewClient(*cfg, l)
 	if err != nil {
 		l.Error(context.Background(), err, "Error al crear cliente redis", map[string]interface{}{})
 	}

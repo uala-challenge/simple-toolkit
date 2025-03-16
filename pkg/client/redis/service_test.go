@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	log "github.com/uala-challenge/simple-toolkit/pkg/utilities/log/mock"
 )
 
 func TestNewClient(t *testing.T) {
@@ -14,7 +16,9 @@ func TestNewClient(t *testing.T) {
 		Timeout: 1,
 	}
 
-	cliente, err := NewClient(cfg)
+	mockLogger := log.NewService(t)
+	mockLogger.On("Debug", mock.Anything, mock.Anything).Return(nil)
+	cliente, err := NewClient(cfg, mockLogger)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, cliente)
@@ -28,8 +32,9 @@ func TestNewClientWithPass(t *testing.T) {
 		Timeout:  1,
 		Password: "pass",
 	}
-
-	cliente, err := NewClient(cfg)
+	mockLogger := log.NewService(t)
+	mockLogger.On("Debug", mock.Anything, mock.Anything).Return(nil)
+	cliente, err := NewClient(cfg, mockLogger)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, cliente)

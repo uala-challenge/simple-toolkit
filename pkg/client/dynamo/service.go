@@ -9,7 +9,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 )
 
-func NewClient(acf aws.Config, cfg Config, l *logrus.Logger) *dynamodb.Client {
+type Dynamo struct {
+	Cliente Service
+}
+
+func NewClient(acf aws.Config, cfg Config, l *logrus.Logger) *Dynamo {
 	client := dynamodb.NewFromConfig(acf, func(o *dynamodb.Options) {
 		if cfg.Endpoint != "" {
 			o.BaseEndpoint = aws.String(cfg.Endpoint)
@@ -18,5 +22,5 @@ func NewClient(acf aws.Config, cfg Config, l *logrus.Logger) *dynamodb.Client {
 			l.Debug("Configurando Dynamo con AWS")
 		}
 	})
-	return client
+	return &Dynamo{Cliente: client}
 }

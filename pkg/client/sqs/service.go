@@ -9,8 +9,12 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 )
 
-func NewClient(acf aws.Config, cfg Config, l *logrus.Logger) *sqs.Client {
-	return sqs.NewFromConfig(acf, func(o *sqs.Options) {
+type Sqs struct {
+	Cliente Service
+}
+
+func NewClient(acf aws.Config, cfg Config, l *logrus.Logger) *Sqs {
+	client := sqs.NewFromConfig(acf, func(o *sqs.Options) {
 		if cfg.Endpoint != "" {
 			o.BaseEndpoint = aws.String(cfg.Endpoint)
 			l.Debug(fmt.Sprintf("Configurando SQS con LocalStack, endpoint %s", cfg.Endpoint))
@@ -18,4 +22,5 @@ func NewClient(acf aws.Config, cfg Config, l *logrus.Logger) *sqs.Client {
 			l.Debug("Configurando SQS con AWS")
 		}
 	})
+	return &Sqs{Cliente: client}
 }

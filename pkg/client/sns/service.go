@@ -9,7 +9,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 )
 
-func NewClient(acf aws.Config, baseEndpoint string, l *logrus.Logger) *sns.Client {
+type Sns struct {
+	Cliente Service
+}
+
+func NewClient(acf aws.Config, baseEndpoint string, l *logrus.Logger) *Sns {
 	client := sns.NewFromConfig(acf, func(o *sns.Options) {
 		if baseEndpoint != "" {
 			o.BaseEndpoint = aws.String(baseEndpoint)
@@ -19,5 +23,5 @@ func NewClient(acf aws.Config, baseEndpoint string, l *logrus.Logger) *sns.Clien
 		}
 	})
 
-	return client
+	return &Sns{Cliente: client}
 }

@@ -9,19 +9,16 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"github.com/aws/aws-sdk-go-v2/service/sns"
-	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/redis/go-redis/v9"
 	"github.com/uala-challenge/simple-toolkit/pkg/client/dynamo"
 	rd "github.com/uala-challenge/simple-toolkit/pkg/client/redis"
-	sns2 "github.com/uala-challenge/simple-toolkit/pkg/client/sns"
+	"github.com/uala-challenge/simple-toolkit/pkg/client/sns"
 
 	"github.com/sirupsen/logrus"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
-	sqs2 "github.com/uala-challenge/simple-toolkit/pkg/client/sqs"
+	"github.com/uala-challenge/simple-toolkit/pkg/client/sqs"
 	"github.com/uala-challenge/simple-toolkit/pkg/config/viper"
 	"github.com/uala-challenge/simple-toolkit/pkg/simplify/simple_router"
 	"github.com/uala-challenge/simple-toolkit/pkg/utilities/log"
@@ -57,21 +54,21 @@ func configLogLevel(c log.Config, l *logrus.Logger) log.Service {
 		Path:  c.Path,
 	}, l)
 }
-func createSQSService(acf aws.Config, cfg *sqs2.Config, l *logrus.Logger) *sqs.Client {
+func createSQSService(acf aws.Config, cfg *sqs.Config, l *logrus.Logger) *sqs.Sqs {
 	if cfg == nil {
 		return nil
 	}
-	return sqs2.NewClient(acf, *cfg, l)
+	return sqs.NewClient(acf, *cfg, l)
 }
 
-func createSNSClient(acf aws.Config, cfg *sns2.Config, l *logrus.Logger) *sns.Client {
+func createSNSClient(acf aws.Config, cfg *sns.Config, l *logrus.Logger) *sns.Sns {
 	if cfg == nil {
 		return nil
 	}
-	return sns2.NewClient(acf, cfg.Endpoint, l)
+	return sns.NewClient(acf, cfg.Endpoint, l)
 }
 
-func createDynamoClient(acf aws.Config, cfg *dynamo.Config, l *logrus.Logger) *dynamodb.Client {
+func createDynamoClient(acf aws.Config, cfg *dynamo.Config, l *logrus.Logger) *dynamo.Dynamo {
 	if cfg == nil {
 		return nil
 	}

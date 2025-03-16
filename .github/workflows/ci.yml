@@ -20,6 +20,9 @@ jobs:
           go-version: 'stable'
           check-latest: true
 
+      - name: Clean Go Module Cache
+        run: go clean -modcache
+
       - name: Cache Go modules
         uses: actions/cache@v4
         with:
@@ -39,8 +42,8 @@ jobs:
             --tests=false
             ./...
 
-  sonarcloud:
-    name: SonarCloud Analysis (With Test Coverage)
+  test:
+    name: Run Unit Tests with Coverage
     runs-on: ubuntu-latest
     needs: lint
     steps:
@@ -53,6 +56,37 @@ jobs:
           go-version: 'stable'
           check-latest: true
 
+      - name: Run Tests with Coverage
+        run: |
+          go test -coverprofile=coverage.out ./...
+          go tool cover -func=coverage.out
+
+      - name: Check Coverage File
+        run: |
+          if [ ! -f coverage.out ]; then
+            echo "Coverage report not found!"
+            exit 1
+          fi
+
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.out
+
+  sonarcloud:
+    name: SonarCloud Analysis (With Test Coverage)
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Coverage Report
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-report
+
       - name: Install SonarScanner
         run: |
           curl -sSLo sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
@@ -60,21 +94,6 @@ jobs:
           mv sonar-scanner-5.0.1.3006-linux sonar-scanner
           echo "$GITHUB_WORKSPACE/sonar-scanner/bin" >> $GITHUB_PATH
           rm sonar-scanner.zip
-
-      - name: Run Unit Tests with Coverage
-        run: |
-          go test -coverprofile=coverage.out ./...
-
-      - name: Debug Coverage Report
-        run: |
-          if [ -f coverage.out ]; then
-            echo "Coverage report generated successfully."
-            echo "First 20 lines of coverage.out:"
-            head -20 coverage.out
-          else
-            echo "coverage.out was NOT generated!"
-            exit 1
-          fi
 
       - name: Run SonarCloud Scan
         run: |

@@ -1,0 +1,108 @@
+name: CD Pipeline
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - develop
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types:
+      - completed
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    name: Prepare Workflow
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print Workflow Start
+        run: echo "Starting CD Pipeline..."
+
+  versioning:
+    name: Determine Version
+    runs-on: ubuntu-latest
+    needs: prepare
+    outputs:
+      version: ${{ steps.versioning.outputs.version }}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "github-actions@github.com"
+
+      - name: Get Latest Version
+        id: get_latest_version
+        run: |
+          LATEST_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(-rc|-test)?$' | head -n 1 || echo "v0.0.0")
+          echo "latest_version=$LATEST_TAG" >> $GITHUB_ENV
+
+      - name: Calculate New Version
+        id: versioning
+        run: |
+          VERSION=${{ env.latest_version }}
+          MAJOR=$(echo "$VERSION" | cut -d. -f1 | tr -d 'v')
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          PATCH=$(echo "$VERSION" | cut -d. -f3 | sed 's/-.*//')
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            SOURCE_BRANCH="${{ github.event.pull_request.head.ref }}"
+          else
+            SOURCE_BRANCH="${{ github.ref_name }}"
+          fi
+
+          if [[ "$SOURCE_BRANCH" == "develop" ]]; then
+            NEW_VERSION="v$MAJOR.$MINOR.$((PATCH+1))-test"
+          elif [[ "$SOURCE_BRANCH" =~ ^fix/.* || "$SOURCE_BRANCH" =~ ^hotfix/.* ]]; then
+            NEW_VERSION="v$MAJOR.$MINOR.$((PATCH+1))-test"
+          elif [[ "$SOURCE_BRANCH" == "main" && "${{ github.event_name }}" == "pull_request" ]]; then
+            NEW_VERSION="v$MAJOR.$MINOR.$((PATCH+1))-rc"
+          elif [[ "$SOURCE_BRANCH" == "main" && "${{ github.event_name }}" == "push" ]]; then
+            echo "Push directo a main detectado. No se generará versión automáticamente."
+            exit 0
+          fi
+
+          echo "Determined version: $NEW_VERSION"
+          echo "version=$NEW_VERSION" >> $GITHUB_ENV
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create Git Tag
+        if: ${{ env.version != '' }}
+        run: |
+          git tag ${{ env.version }}
+          git push origin ${{ env.version }}
+
+  release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: versioning
+    if: needs.versioning.outputs.version != ''
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          check-latest: true
+
+      - name: Build Binary
+        run: |
+          go build -o simple-toolkit ./...
+          tar -czvf simple-toolkit_${{ needs.versioning.outputs.version }}.tar.gz simple-toolkit
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: simple-toolkit_${{ needs.versioning.outputs.version }}.tar.gz
+          tag_name: ${{ needs.versioning.outputs.version }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -3,6 +3,9 @@ package app_engine
 import (
 	"context"
 	"fmt"
+	"os"
+
+	"go.elastic.co/ecslogrus"
 
 	"github.com/mitchellh/mapstructure"
 
@@ -25,48 +28,50 @@ import (
 )
 
 func NewApp() *Engine {
-	v := viper.NewService()
+	tracer := logrus.New()
+	tracer.SetOutput(os.Stdout)
+	tracer.SetFormatter(&ecslogrus.Formatter{})
+	tracer.Level = logrus.DebugLevel
+	v := viper.NewService(tracer)
 	c, err := v.Apply()
 	if err != nil {
-		panic(err)
+		tracer.Fatal(err)
 	}
-	l := creteLog(c.Log)
-	awsCfg := loadAWSConfig(c.Aws, l)
+	awsCfg := loadAWSConfig(c.Aws, tracer)
 	return &Engine{
-		App:                simple_router.NewService(c.Router, l),
-		Log:                l,
-		SQSClient:          createSQSService(awsCfg, c.SQS, l),
-		SNSClient:          createSNSClient(awsCfg, c.SNS, l),
-		DynamoDBClient:     createDynamoClient(awsCfg, c.Dynamo, l),
-		RedisClient:        createRedisService(c.Redis, l),
+		App:                simple_router.NewService(c.Router),
+		SQSClient:          createSQSService(awsCfg, c.SQS, tracer),
+		SNSClient:          createSNSClient(awsCfg, c.SNS, tracer),
+		DynamoDBClient:     createDynamoClient(awsCfg, c.Dynamo, tracer),
+		RedisClient:        createRedisService(c.Redis, tracer),
 		RepositoriesConfig: c.Repositories,
 		UsesCasesConfig:    c.Cases,
 		HandlerConfig:      c.Endpoints,
+		Log:                configLogLevel(c.Log, tracer),
 	}
 }
 
-func creteLog(c log.Config) log.Service {
-
+func configLogLevel(c log.Config, l *logrus.Logger) log.Service {
 	return log.NewService(log.Config{
 		Level: c.Level,
 		Path:  c.Path,
-	}, logrus.New())
+	}, l)
 }
-func createSQSService(acf aws.Config, cfg *sqs2.Config, l log.Service) *sqs.Client {
+func createSQSService(acf aws.Config, cfg *sqs2.Config, l *logrus.Logger) *sqs.Client {
 	if cfg == nil {
 		return nil
 	}
 	return sqs2.NewClient(acf, *cfg, l)
 }
 
-func createSNSClient(acf aws.Config, cfg *sns2.Config, l log.Service) *sns.Client {
+func createSNSClient(acf aws.Config, cfg *sns2.Config, l *logrus.Logger) *sns.Client {
 	if cfg == nil {
 		return nil
 	}
 	return sns2.NewClient(acf, cfg.Endpoint, l)
 }
 
-func createDynamoClient(acf aws.Config, cfg *dynamo.Config, l log.Service) *dynamodb.Client {
+func createDynamoClient(acf aws.Config, cfg *dynamo.Config, l *logrus.Logger) *dynamodb.Client {
 	if cfg == nil {
 		return nil
 	}
@@ -74,23 +79,23 @@ func createDynamoClient(acf aws.Config, cfg *dynamo.Config, l log.Service) *dyna
 	return client
 }
 
-func createRedisService(cfg *rd.Config, l log.Service) *redis.Client {
+func createRedisService(cfg *rd.Config, l *logrus.Logger) *redis.Client {
 	if cfg == nil {
 		return nil
 	}
 	client, err := rd.NewClient(*cfg, l)
 	if err != nil {
-		l.Error(context.Background(), err, "Error al crear cliente redis", map[string]interface{}{})
+		l.Error(err)
 	}
 	return client
 }
 
-func loadAWSConfig(ar viper.AwsConfig, l log.Service) aws.Config {
+func loadAWSConfig(ar viper.AwsConfig, l *logrus.Logger) aws.Config {
 	awsCfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithRegion(ar.Region),
 	)
 	if err != nil {
-		l.FatalError(context.Background(), err, map[string]interface{}{})
+		l.Fatal(err)
 	}
 	return awsCfg
 }

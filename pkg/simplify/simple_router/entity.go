@@ -2,7 +2,6 @@ package simple_router
 
 import (
 	"github.com/go-chi/chi/v5"
-	"github.com/uala-challenge/simple-toolkit/pkg/utilities/log"
 )
 
 const (
@@ -16,7 +15,6 @@ type Service interface {
 type App struct {
 	Router *chi.Mux
 	Port   string
-	log    log.Service
 }
 
 type Config struct {

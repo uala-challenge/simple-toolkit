@@ -7,6 +7,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/mitchellh/mapstructure"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"github.com/uala-challenge/simple-toolkit/pkg/utilities/app_profile"
 	"github.com/uala-challenge/simple-toolkit/pkg/utilities/file_utils"
@@ -14,11 +15,12 @@ import (
 
 var _ Service = (*service)(nil)
 
-func NewService() Service {
+func NewService(logger *logrus.Logger) Service {
 	once.Do(func() {
 		instance = &service{
-			propertyFiles: getPropertyFiles(),
-			path:          getConfigPath(),
+			propertyFiles: getPropertyFiles(logger),
+			path:          getConfigPath(logger),
+			log:           logger,
 		}
 	})
 	return instance
@@ -26,38 +28,44 @@ func NewService() Service {
 
 func (s *service) Apply() (Config, error) {
 	if err := s.validateRequiredFiles(); err != nil {
+		s.log.Error("Error validando archivos de configuración: ", err)
 		return Config{}, err
 	}
 
 	mergedConfig, err := s.loadAndMergeConfigs()
 	if err != nil {
+		s.log.Error("Error cargando configuración: ", err)
 		return Config{}, fmt.Errorf("error loading configuration - %w", err)
 	}
 
+	s.log.Info("Configuración cargada correctamente")
 	return s.mapConfigToStruct(mergedConfig)
 }
 
 func (s *service) validateRequiredFiles() error {
 	files, err := file_utils.ListFiles(s.path)
 	if err != nil {
+		s.log.Errorf("Error listando archivos en %s: %v", s.path, err)
 		return err
 	}
 
 	missingFiles := getMissingFiles(s.propertyFiles, files)
 	if len(missingFiles) > 0 {
-		fmt.Printf("Archivos de configuración faltantes: %v\n", missingFiles)
-		return err
+		s.log.Errorf("Archivos de configuración faltantes: %v", missingFiles)
+		return fmt.Errorf("faltan archivos de configuración: %v", missingFiles)
 	}
+
+	s.log.Debug("Todos los archivos de configuración requeridos están presentes")
 	return nil
 }
 
 func (s *service) loadAndMergeConfigs() (*viper.Viper, error) {
-	baseConfig, err := loadConfig(s.path, "application")
+	baseConfig, err := loadConfig(s.path, "application", s.log)
 	if err != nil {
 		return nil, err
 	}
 
-	envConfig, err := loadConfig(s.path, s.getPropertyFileName())
+	envConfig, err := loadConfig(s.path, s.getPropertyFileName(), s.log)
 	if err != nil {
 		return nil, err
 	}
@@ -66,20 +74,24 @@ func (s *service) loadAndMergeConfigs() (*viper.Viper, error) {
 		return nil, fmt.Errorf("failed to merge configurations: %w", err)
 	}
 
+	s.log.Debug("Archivos de configuración combinados correctamente")
 	return baseConfig, nil
 }
 
 func (s *service) mapConfigToStruct(v *viper.Viper) (Config, error) {
 	configMap, err := unmarshalConfig(v)
 	if err != nil {
+		s.log.Error("Error al deserializar configuración", err)
 		return Config{}, err
 	}
 
 	processedConfig, err := processConfigValues(configMap)
 	if err != nil {
+		s.log.Error("Error al procesar configuración", err)
 		return Config{}, err
 	}
 
+	s.log.Debug("Configuración mapeada correctamente a la estructura de datos")
 	return decodeToStruct(processedConfig)
 }
 
@@ -94,48 +106,57 @@ func (s *service) getPropertyFileName() string {
 	return profileFile
 }
 
-func getPropertyFiles() []string {
+func getPropertyFiles(logger *logrus.Logger) []string {
 	requiredFiles := []string{"application.yaml"}
 	scopeFile := fmt.Sprintf("application-%s.yaml", app_profile.GetScopeValue())
-	availableFiles, _ := file_utils.ListFiles(getConfigPath())
+	availableFiles, _ := file_utils.ListFiles(getConfigPath(logger))
+
 	if contains(availableFiles, scopeFile) {
 		requiredFiles = append(requiredFiles, scopeFile)
 	}
 
+	logger.Debugf("Archivos requeridos: %v", requiredFiles)
 	return requiredFiles
 }
 
-func getConfigPath() string {
+func getConfigPath(logger *logrus.Logger) string {
 	if path := os.Getenv("CONF_DIR"); path != "" {
+		logger.Debugf("Usando CONF_DIR: %s", path)
 		return path
 	}
+
 	if app_profile.IsLocalProfile() {
+		logger.Debug("Usando perfil local para configuración")
 		return "kit/config"
 	}
+
+	logger.Debug("Usando configuración por defecto en /app/kit/config")
 	return "/app/kit/config"
 }
 
-func loadConfig(path, filename string) (*viper.Viper, error) {
+func loadConfig(path, filename string, logger *logrus.Logger) (*viper.Viper, error) {
 	v := viper.New()
 	v.AddConfigPath(path)
 	v.SetConfigName(filename)
 	v.AutomaticEnv()
 
 	if err := v.ReadInConfig(); err != nil {
+		logger.Errorf("Error leyendo archivo de configuración %s/%s: %v", path, filename, err)
 		return nil, err
 	}
 
 	if v.GetBool("enable_config_watch") {
-		watchConfig(v)
+		watchConfig(v, logger)
 	}
 
+	logger.Infof("Archivo de configuración %s cargado correctamente", filename)
 	return v, nil
 }
 
-func watchConfig(v *viper.Viper) {
+func watchConfig(v *viper.Viper, logger *logrus.Logger) {
 	v.WatchConfig()
 	v.OnConfigChange(func(e fsnotify.Event) {
-		fmt.Printf("Config file changed: %s\n", e.Name)
+		logger.Warnf("Archivo de configuración cambiado: %s", e.Name)
 	})
 }
 
@@ -164,8 +185,6 @@ func processConfigValues(config map[string]interface{}) (map[string]interface{},
 			config[key] = processed
 		case string:
 			config[key] = resolveEnvValue(v)
-		case bool:
-			config[key] = v
 		}
 	}
 	return config, nil
@@ -193,6 +212,25 @@ func processSliceValues(slice []interface{}) ([]interface{}, error) {
 	return slice, nil
 }
 
+func getMissingFiles(required, available []string) []string {
+	var missing []string
+	for _, file := range required {
+		if !contains(available, file) {
+			missing = append(missing, file)
+		}
+	}
+	return missing
+}
+
+func contains(slice []string, value string) bool {
+	for _, v := range slice {
+		if v == value {
+			return true
+		}
+	}
+	return false
+}
+
 func resolveEnvValue(value string) string {
 	if strings.HasPrefix(value, "${") && strings.HasSuffix(value, "}") {
 		trimmed := strings.Trim(value, "${}")
@@ -215,23 +253,4 @@ func decodeToStruct(config map[string]interface{}) (Config, error) {
 		return Config{}, err
 	}
 	return result, nil
-}
-
-func getMissingFiles(required, available []string) []string {
-	var missing []string
-	for _, file := range required {
-		if !contains(available, file) {
-			missing = append(missing, file)
-		}
-	}
-	return missing
-}
-
-func contains(slice []string, value string) bool {
-	for _, v := range slice {
-		if v == value {
-			return true
-		}
-	}
-	return false
 }

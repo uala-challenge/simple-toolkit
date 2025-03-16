@@ -3,9 +3,9 @@ package redis
 import (
 	"testing"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	log "github.com/uala-challenge/simple-toolkit/pkg/utilities/log/mock"
 )
 
 func TestNewClient(t *testing.T) {
@@ -16,9 +16,7 @@ func TestNewClient(t *testing.T) {
 		Timeout: 1,
 	}
 
-	mockLogger := log.NewService(t)
-	mockLogger.On("Debug", mock.Anything, mock.Anything).Return(nil)
-	cliente, err := NewClient(cfg, mockLogger)
+	cliente, err := NewClient(cfg, logrus.New())
 
 	assert.NoError(t, err)
 	assert.NotNil(t, cliente)
@@ -32,9 +30,7 @@ func TestNewClientWithPass(t *testing.T) {
 		Timeout:  1,
 		Password: "pass",
 	}
-	mockLogger := log.NewService(t)
-	mockLogger.On("Debug", mock.Anything, mock.Anything).Return(nil)
-	cliente, err := NewClient(cfg, mockLogger)
+	cliente, err := NewClient(cfg, logrus.New())
 
 	assert.NoError(t, err)
 	assert.NotNil(t, cliente)

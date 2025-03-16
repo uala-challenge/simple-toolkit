@@ -3,6 +3,8 @@ package viper
 import (
 	"sync"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/uala-challenge/simple-toolkit/pkg/client/dynamo"
 	"github.com/uala-challenge/simple-toolkit/pkg/client/redis"
 
@@ -36,6 +38,7 @@ type AwsConfig struct {
 type service struct {
 	propertyFiles []string
 	path          string
+	log           *logrus.Logger
 }
 
 var (

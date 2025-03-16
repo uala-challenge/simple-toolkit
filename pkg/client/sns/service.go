@@ -1,23 +1,21 @@
 package sns
 
 import (
-	"context"
+	"fmt"
 
-	"github.com/uala-challenge/simple-toolkit/pkg/utilities/log"
+	"github.com/sirupsen/logrus"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sns"
 )
 
-func NewClient(acf aws.Config, baseEndpoint string, l log.Service) *sns.Client {
+func NewClient(acf aws.Config, baseEndpoint string, l *logrus.Logger) *sns.Client {
 	client := sns.NewFromConfig(acf, func(o *sns.Options) {
 		if baseEndpoint != "" {
 			o.BaseEndpoint = aws.String(baseEndpoint)
-			l.Debug(context.Background(),
-				map[string]interface{}{"message": "Configurando SNS con LocalStack", "endpoint": baseEndpoint})
+			l.Debug(fmt.Sprintf("Configurando SNS con LocalStack, endpoint %s", baseEndpoint))
 		} else {
-			l.Debug(context.Background(),
-				map[string]interface{}{"message": "Configurando SNS con AWS"})
+			l.Debug("Configurando SNS con AWS")
 		}
 	})
 

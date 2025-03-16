@@ -7,7 +7,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"go.elastic.co/ecslogrus"
 )
 
 type service struct {
@@ -17,9 +16,7 @@ type service struct {
 var _ Service = (*service)(nil)
 
 func NewService(c Config, l *logrus.Logger) Service {
-	l.Formatter = &ecslogrus.Formatter{}
 	l.Level = loggerLevel(c.Level)
-
 	fileLog := c.Path
 	file, err := os.OpenFile(fileLog, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err == nil {

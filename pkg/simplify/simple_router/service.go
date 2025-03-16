@@ -11,17 +11,15 @@ import (
 	"github.com/uala-challenge/simple-toolkit/pkg/simplify/simple_router/ping"
 	"github.com/uala-challenge/simple-toolkit/pkg/simplify/simple_router/swagger"
 	"github.com/uala-challenge/simple-toolkit/pkg/utilities/app_profile"
-	"github.com/uala-challenge/simple-toolkit/pkg/utilities/log"
 )
 
 var _ Service = (*App)(nil)
 
-func NewService(c Config, l log.Service) *App {
+func NewService(c Config) *App {
 	routes := initRoutes()
 	return &App{
 		Router: routes,
 		Port:   setPort(c.Port),
-		log:    l,
 	}
 }
 

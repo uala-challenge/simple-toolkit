@@ -3,10 +3,10 @@ package sqs
 import (
 	"testing"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	log "github.com/uala-challenge/simple-toolkit/pkg/utilities/log/mock"
 )
 
 func TestNewSNSClient(t *testing.T) {
@@ -14,17 +14,13 @@ func TestNewSNSClient(t *testing.T) {
 		Endpoint: "http://localhost:4566",
 	}
 	awsCfg := aws.Config{}
-	mockLogger := log.NewService(t)
-	mockLogger.On("Debug", mock.Anything, mock.Anything).Return(nil)
-	client := NewClient(awsCfg, cfg, mockLogger)
+	client := NewClient(awsCfg, cfg, logrus.New())
 	assert.NotNil(t, client, "El cliente SQS no debería ser nil")
 }
 
 func TestNewSNSClientNoBaseEndpoint(t *testing.T) {
 	cfg := Config{}
 	awsCfg := aws.Config{}
-	mockLogger := log.NewService(t)
-	mockLogger.On("Debug", mock.Anything, mock.Anything).Return(nil)
-	client := NewClient(awsCfg, cfg, mockLogger)
+	client := NewClient(awsCfg, cfg, logrus.New())
 	assert.NotNil(t, client, "El cliente SQS no debería ser nil")
 }

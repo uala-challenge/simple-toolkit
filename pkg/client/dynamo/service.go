@@ -2,7 +2,6 @@ package dynamo
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/uala-challenge/simple-toolkit/pkg/utilities/log"
 
@@ -21,6 +20,5 @@ func NewClient(acf aws.Config, cfg Config, l log.Service) *dynamodb.Client {
 				map[string]interface{}{"message": "Configurando Dynamo con AWS"})
 		}
 	})
-	fmt.Println("cliente DynamoDB inicializado correctamente")
 	return client
 }

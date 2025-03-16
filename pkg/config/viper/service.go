@@ -46,7 +46,7 @@ func (s *service) validateRequiredFiles() error {
 	missingFiles := getMissingFiles(s.propertyFiles, files)
 	if len(missingFiles) > 0 {
 		fmt.Printf("Archivos de configuración faltantes: %v\n", missingFiles)
-		return nil
+		return err
 	}
 	return nil
 }
@@ -109,7 +109,10 @@ func getConfigPath() string {
 	if path := os.Getenv("CONF_DIR"); path != "" {
 		return path
 	}
-	return "kit/config"
+	if app_profile.IsLocalProfile() {
+		return "kit/config"
+	}
+	return "/app/kit/config"
 }
 
 func loadConfig(path, filename string) (*viper.Viper, error) {

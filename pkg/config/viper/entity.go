@@ -32,6 +32,7 @@ type Config struct {
 	Repositories map[string]interface{}   `json:"repositories" yaml:"repositories"`
 	Cases        map[string]interface{}   `json:"cases" yaml:"cases"`
 	Endpoints    map[string]interface{}   `json:"endpoints" yaml:"endpoints"`
+	Processors   map[string]interface{}   `json:"processors" yaml:"processors"`
 }
 
 type AwsConfig struct {

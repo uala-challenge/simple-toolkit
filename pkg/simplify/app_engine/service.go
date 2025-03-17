@@ -46,6 +46,7 @@ func NewApp() *Engine {
 		RepositoriesConfig: c.Repositories,
 		UsesCasesConfig:    c.Cases,
 		HandlerConfig:      c.Endpoints,
+		BatchConfig:        c.Processors,
 		RestClients:        createHttpClient(c.Rest, tracer),
 		Log:                configLogLevel(c.Log, tracer),
 	}

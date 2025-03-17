@@ -21,4 +21,5 @@ type Engine struct {
 	RepositoriesConfig map[string]interface{}
 	UsesCasesConfig    map[string]interface{}
 	HandlerConfig      map[string]interface{}
+	BatchConfig        map[string]interface{}
 }

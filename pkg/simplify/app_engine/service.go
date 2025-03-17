@@ -3,6 +3,7 @@ package app_engine
 import (
 	"context"
 	"fmt"
+	"github.com/uala-challenge/simple-toolkit/pkg/client/rest"
 	"os"
 
 	"go.elastic.co/ecslogrus"
@@ -44,6 +45,7 @@ func NewApp() *Engine {
 		RepositoriesConfig: c.Repositories,
 		UsesCasesConfig:    c.Cases,
 		HandlerConfig:      c.Endpoints,
+		RestClients:        createHttpClient(c.Rest, tracer),
 		Log:                configLogLevel(c.Log, tracer),
 	}
 }
@@ -85,6 +87,16 @@ func createRedisService(cfg *rd.Config, l *logrus.Logger) *redis.Client {
 		l.Error(err)
 	}
 	return client
+}
+
+func createHttpClient(c []map[string]rest.Config, l *logrus.Logger) map[string]rest.Service {
+	httpClients := make(map[string]rest.Service)
+	for _, v := range c {
+		for k, v := range v {
+			httpClients[k] = rest.NewClient(v, l)
+		}
+	}
+	return httpClients
 }
 
 func loadAWSConfig(ar viper.AwsConfig, l *logrus.Logger) aws.Config {

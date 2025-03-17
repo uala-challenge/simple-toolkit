@@ -3,6 +3,7 @@ package rest
 import (
 	"bytes"
 	"context"
+	"github.com/sirupsen/logrus"
 	"math"
 	"net/http"
 	"net/http/httptest"
@@ -11,9 +12,6 @@ import (
 
 	"github.com/go-resty/resty/v2"
 	"github.com/sony/gobreaker/v2"
-	"github.com/stretchr/testify/mock"
-	log "github.com/uala-challenge/simple-toolkit/pkg/utilities/log/mock"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -63,7 +61,7 @@ var (
 )
 
 func TestNewClient(t *testing.T) {
-	l := log.NewService(t)
+	l := logrus.New()
 	client := NewClient(mockConfigWithRetry, l)
 	assert.NotNil(t, client)
 }
@@ -86,7 +84,7 @@ func TestGetRequest(t *testing.T) {
 	ts := httptest.NewServer(nil)
 	defer ts.Close()
 
-	l := log.NewService(t)
+	l := logrus.New()
 	client := NewClient(mockConfigWithRetry, l)
 	_, err := client.Get(context.Background(), ts.URL)
 
@@ -114,10 +112,8 @@ func TestGetRequestWithError(t *testing.T) {
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
 
-	l := log.NewService(t)
+	l := logrus.New()
 	client := NewClient(mockConfigWithCBPort, l)
-	l.On("Warn", context.Background(), mock.Anything, mock.Anything).Return()
-	l.On("Info", context.Background(), mock.Anything, mock.Anything, mock.Anything).Return()
 
 	requestBody := bytes.NewBuffer([]byte(`{"name": "test"}`))
 	var err error
@@ -149,9 +145,8 @@ func TestPostRequestWithCB(t *testing.T) {
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
 
-	l := log.NewService(t)
+	l := logrus.New()
 	client := NewClient(mockConfigWithCB, l)
-	l.On("Info", context.Background(), mock.Anything, mock.Anything, mock.Anything).Return()
 	requestBody := bytes.NewBuffer([]byte(`{"name": "test"}`))
 	var err error
 	var response *resty.Response
@@ -183,17 +178,14 @@ func TestPostRequestWithCBAndError(t *testing.T) {
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
 
-	l := log.NewService(t)
+	l := logrus.New()
 	client := NewClient(mockConfigWithCB, l)
 	client.WithLogging(true)
-	l.On("Info", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return()
-	l.On("Warn", mock.Anything, mock.Anything, mock.Anything).Return()
 	requestBody := bytes.NewBuffer([]byte(`{"name": "test"}`))
 	response, err := client.Post(context.Background(), ts.URL, requestBody)
 
 	assert.Error(t, err)
 	assert.Nil(t, response)
-	l.AssertExpectations(t)
 }
 
 func TestPostRequestIsOpen(t *testing.T) {
@@ -216,10 +208,8 @@ func TestPostRequestIsOpen(t *testing.T) {
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
 
-	l := log.NewService(t)
+	l := logrus.New()
 	client := NewClient(mockConfigWithCB, l)
-	l.On("Warn", context.Background(), mock.Anything, mock.Anything).Return()
-	l.On("Info", context.Background(), mock.Anything, mock.Anything, mock.Anything).Return()
 
 	requestBody := bytes.NewBuffer([]byte(`{"name": "test"}`))
 	var err error
@@ -251,9 +241,8 @@ func TestPutRequest(t *testing.T) {
 
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
-	l := log.NewService(t)
+	l := logrus.New()
 	client := NewClient(mockConfigWithRetry, l)
-	l.On("Debug", context.Background(), mock.Anything).Return()
 	var err error
 	var response *resty.Response
 
@@ -277,7 +266,7 @@ func TestPatchRequest(t *testing.T) {
 
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
-	l := log.NewService(t)
+	l := logrus.New()
 	client := NewClient(mockConfigWithRetry, l)
 	response, err := client.Patch(context.Background(), ts.URL, nil)
 
@@ -298,7 +287,7 @@ func TestDeleteRequest(t *testing.T) {
 
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
-	l := log.NewService(t)
+	l := logrus.New()
 	client := NewClient(mockConfigWithRetry, l)
 	response, err := client.Delete(context.Background(), ts.URL)
 
@@ -307,10 +296,9 @@ func TestDeleteRequest(t *testing.T) {
 }
 
 func TestExponentialBackoffWithJitter(t *testing.T) {
-	l := log.NewService(t)
+	l := logrus.New()
 	initialWait := 100 * time.Millisecond
 	maxWait := 5 * time.Second
-	l.On("Debug", context.Background(), mock.Anything).Return()
 
 	waitTimeZero := exponentialBackoffWithJitter(initialWait, maxWait, 0, l)
 	expectedBaseZero := initialWait * time.Duration(math.Pow(BackoffFactor, 0))
@@ -334,7 +322,7 @@ func TestSetDefaultConfig(t *testing.T) {
 }
 
 func TestCheckBreakerState(t *testing.T) {
-	l := log.NewService(t)
+	l := logrus.New()
 	cfg := Config{CBMaxRequests: 3, CBRequestThreshold: 5, CBFailureRateLimit: 0.5}
 
 	counts := gobreaker.Counts{
@@ -342,15 +330,13 @@ func TestCheckBreakerState(t *testing.T) {
 		TotalFailures:       6,
 		ConsecutiveFailures: 4,
 	}
-	l.On("Info", context.Background(), mock.Anything, mock.Anything, mock.Anything).Return()
 	result := checkBreakerState(counts, cfg, l)
 	assert.True(t, result)
 }
 func TestRetryAfterFunc(t *testing.T) {
-	l := log.NewService(t)
+	l := logrus.New()
 	client := resty.New()
 	resp := &resty.Response{Request: &resty.Request{Attempt: 3}}
-	l.On("Debug", context.Background(), mock.Anything, mock.Anything, mock.Anything).Return()
 	retryWait, err := retryAfterFunc(DefaultRetryWaitTime, DefaultRetryMaxWaitTime, l)(client, resp)
 	assert.NoError(t, err)
 	assert.GreaterOrEqual(t, retryWait, DefaultRetryWaitTime)

@@ -2,11 +2,11 @@ package rest
 
 import (
 	"context"
+	"github.com/sirupsen/logrus"
 	"time"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/sony/gobreaker/v2"
-	"github.com/uala-challenge/simple-toolkit/pkg/utilities/log"
 )
 
 const (
@@ -51,7 +51,7 @@ type Service interface {
 type client struct {
 	baseURL   string
 	requester *requester
-	logger    log.Service
+	logger    *logrus.Logger
 	logging   bool
 }
 

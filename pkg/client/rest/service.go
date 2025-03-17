@@ -4,11 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"math"
 	"math/rand"
 	"time"
-
-	"github.com/uala-challenge/simple-toolkit/pkg/utilities/log"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/sony/gobreaker/v2"
@@ -16,7 +15,7 @@ import (
 
 var _ Service = (*client)(nil)
 
-func NewClient(cfg Config, l log.Service) Service {
+func NewClient(cfg Config, l *logrus.Logger) *client {
 	setDefaultConfig(&cfg)
 	r := &requester{
 		httpClient: createHttpClient(cfg, l, cfg.TimeOut),
@@ -65,7 +64,7 @@ func setDefaultConfig(cfg *Config) {
 	}
 }
 
-func checkBreakerState(counts gobreaker.Counts, c Config, l log.Service) bool {
+func checkBreakerState(counts gobreaker.Counts, c Config, l *logrus.Logger) bool {
 	var failureRate float64
 	if counts.Requests > 0 {
 		failureRate = float64(counts.TotalFailures) / float64(counts.Requests)
@@ -80,13 +79,13 @@ func checkBreakerState(counts gobreaker.Counts, c Config, l log.Service) bool {
 			"ConsecutiveSuccess": counts.ConsecutiveSuccesses,
 		})
 	if counts.ConsecutiveFailures > c.CBMaxRequests || (counts.Requests >= c.CBRequestThreshold && failureRate > c.CBFailureRateLimit) {
-		l.Info(context.Background(), "Circuit Breaker se abrirá debido a una alta tasa de fallos.", nil)
+		l.Info("Circuit Breaker se abrirá debido a una alta tasa de fallos.", nil)
 		return true
 	}
 	return false
 }
 
-func createCB(c Config, l log.Service) *gobreaker.CircuitBreaker[any] {
+func createCB(c Config, l *logrus.Logger) *gobreaker.CircuitBreaker[any] {
 	if !c.WithCB {
 		return nil
 	}
@@ -100,7 +99,7 @@ func createCB(c Config, l log.Service) *gobreaker.CircuitBreaker[any] {
 		},
 
 		OnStateChange: func(name string, from, to gobreaker.State) {
-			l.Warn(context.Background(), "Circuit Breaker state changed", map[string]interface{}{
+			l.Warn("Circuit Breaker state changed", map[string]interface{}{
 				"name": name,
 				"from": from,
 				"to":   to,
@@ -112,7 +111,7 @@ func createCB(c Config, l log.Service) *gobreaker.CircuitBreaker[any] {
 	return cb
 }
 
-func exponentialBackoffWithJitter(initialWaitTime, maxWaitTime time.Duration, attempt int, l log.Service) time.Duration {
+func exponentialBackoffWithJitter(initialWaitTime, maxWaitTime time.Duration, attempt int, l *logrus.Logger) time.Duration {
 	if attempt <= 0 {
 		attempt = 1
 	}
@@ -138,14 +137,14 @@ func exponentialBackoffWithJitter(initialWaitTime, maxWaitTime time.Duration, at
 	return waitTime
 }
 
-func retryAfterFunc(initialWaitTime, maxWaitTime time.Duration, l log.Service) func(*resty.Client, *resty.Response) (time.Duration, error) {
+func retryAfterFunc(initialWaitTime, maxWaitTime time.Duration, l *logrus.Logger) func(*resty.Client, *resty.Response) (time.Duration, error) {
 	return func(client *resty.Client, resp *resty.Response) (time.Duration, error) {
 		attempt := resp.Request.Attempt
 		return exponentialBackoffWithJitter(initialWaitTime, maxWaitTime, attempt, l), nil
 	}
 }
 
-func createHttpClient(c Config, l log.Service, timeout time.Duration) *resty.Client {
+func createHttpClient(c Config, l *logrus.Logger, timeout time.Duration) *resty.Client {
 	client := resty.New()
 	if timeout > 0 {
 		client.SetTimeout(timeout)

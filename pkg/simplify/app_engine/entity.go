@@ -3,6 +3,7 @@ package app_engine
 import (
 	"github.com/redis/go-redis/v9"
 	"github.com/uala-challenge/simple-toolkit/pkg/client/dynamo"
+	"github.com/uala-challenge/simple-toolkit/pkg/client/rest"
 	"github.com/uala-challenge/simple-toolkit/pkg/client/sns"
 	"github.com/uala-challenge/simple-toolkit/pkg/client/sqs"
 	"github.com/uala-challenge/simple-toolkit/pkg/simplify/simple_router"
@@ -16,6 +17,7 @@ type Engine struct {
 	SNSClient          *sns.Sns
 	DynamoDBClient     *dynamo.Dynamo
 	RedisClient        *redis.Client
+	RestClients        map[string]rest.Service
 	RepositoriesConfig map[string]interface{}
 	UsesCasesConfig    map[string]interface{}
 	HandlerConfig      map[string]interface{}

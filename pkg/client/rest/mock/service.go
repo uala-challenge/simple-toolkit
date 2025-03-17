@@ -165,6 +165,11 @@ func (_m *Service) Put(ctx context.Context, endpoint string, body interface{}) (
 	return r0, r1
 }
 
+// WithLogging provides a mock function with given fields: enable
+func (_m *Service) WithLogging(enable bool) {
+	_m.Called(enable)
+}
+
 // NewService creates a new instance of Service. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewService(t interface {

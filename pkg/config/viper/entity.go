@@ -1,6 +1,7 @@
 package viper
 
 import (
+	"github.com/uala-challenge/simple-toolkit/pkg/client/rest"
 	"sync"
 
 	"github.com/sirupsen/logrus"
@@ -19,16 +20,17 @@ type Service interface {
 }
 
 type Config struct {
-	Router       simple_router.Config   `json:"router" yaml:"router"`
-	Log          log.Config             `json:"log" yaml:"log"`
-	Aws          AwsConfig              `json:"aws" yaml:"aws"`
-	SQS          *sqs.Config            `json:"sqs" yaml:"sqs"`
-	SNS          *sns.Config            `json:"sns" yaml:"sns"`
-	Dynamo       *dynamo.Config         `json:"dynamo" yaml:"dynamo"`
-	Redis        *redis.Config          `json:"redis" yaml:"redis"`
-	Repositories map[string]interface{} `json:"repositories" yaml:"repositories"`
-	Cases        map[string]interface{} `json:"cases" yaml:"cases"`
-	Endpoints    map[string]interface{} `json:"endpoints" yaml:"endpoints"`
+	Router       simple_router.Config     `json:"router" yaml:"router"`
+	Rest         []map[string]rest.Config `json:"rest" yaml:"rest"`
+	Log          log.Config               `json:"log" yaml:"log"`
+	Aws          AwsConfig                `json:"aws" yaml:"aws"`
+	SQS          *sqs.Config              `json:"sqs" yaml:"sqs"`
+	SNS          *sns.Config              `json:"sns" yaml:"sns"`
+	Dynamo       *dynamo.Config           `json:"dynamo" yaml:"dynamo"`
+	Redis        *redis.Config            `json:"redis" yaml:"redis"`
+	Repositories map[string]interface{}   `json:"repositories" yaml:"repositories"`
+	Cases        map[string]interface{}   `json:"cases" yaml:"cases"`
+	Endpoints    map[string]interface{}   `json:"endpoints" yaml:"endpoints"`
 }
 
 type AwsConfig struct {

@@ -3,12 +3,13 @@ package rest
 import (
 	"bytes"
 	"context"
-	"github.com/sirupsen/logrus"
 	"math"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/sony/gobreaker/v2"

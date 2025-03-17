@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"math"
 	"math/rand"
 	"time"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/sony/gobreaker/v2"

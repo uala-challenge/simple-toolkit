@@ -2,8 +2,9 @@ package rest
 
 import (
 	"context"
-	"github.com/sirupsen/logrus"
 	"time"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/sony/gobreaker/v2"

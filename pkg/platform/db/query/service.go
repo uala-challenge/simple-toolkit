@@ -2,6 +2,7 @@ package query
 
 import (
 	"context"
+
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/uala-challenge/simple-toolkit/pkg/client/dynamo"

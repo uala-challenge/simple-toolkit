@@ -85,11 +85,11 @@ func (c *client) WithLogging(enable bool) {
 func createHttpClient(c Config, l *logrus.Logger, timeout time.Duration) *resty.Client {
 	client := resty.New()
 	if timeout > 0 {
-		client.SetTimeout(timeout)
+		client.SetTimeout(timeout * time.Second)
 	}
 	if c.WithRetry {
 		client.SetRetryCount(int(c.RetryCount)).
-			SetRetryAfter(retryAfterFunc(c.RetryWaitTime, c.RetryMaxWaitTime, l)).
+			SetRetryAfter(retryAfterFunc(c.RetryWaitTime*time.Millisecond, c.RetryMaxWaitTime*time.Second, l)).
 			AddRetryCondition(func(r *resty.Response, err error) bool {
 				return err != nil || r.StatusCode() >= 500
 			})
@@ -252,8 +252,8 @@ func createCB(c Config, l *logrus.Logger) *gobreaker.CircuitBreaker[any] {
 	cbConfig := gobreaker.Settings{
 		Name:        c.CBName,
 		MaxRequests: c.CBMaxRequests,
-		Interval:    c.CBInterval,
-		Timeout:     c.CBTimeout,
+		Interval:    c.CBInterval * time.Second,
+		Timeout:     c.CBTimeout * time.Second,
 		ReadyToTrip: func(counts gobreaker.Counts) bool {
 			return checkBreakerState(counts, c, l)
 		},

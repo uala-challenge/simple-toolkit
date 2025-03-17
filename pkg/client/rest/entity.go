@@ -41,11 +41,11 @@ type Config struct {
 }
 
 type Service interface {
-	Get(ctx context.Context, endpoint string) (*resty.Response, error)
-	Post(ctx context.Context, endpoint string, body interface{}) (*resty.Response, error)
-	Put(ctx context.Context, endpoint string, body interface{}) (*resty.Response, error)
-	Patch(ctx context.Context, endpoint string, body interface{}) (*resty.Response, error)
-	Delete(ctx context.Context, endpoint string) (*resty.Response, error)
+	Get(ctx context.Context, endpoint string, headers map[string]string) (*resty.Response, error)
+	Post(ctx context.Context, endpoint string, body interface{}, headers map[string]string) (*resty.Response, error)
+	Put(ctx context.Context, endpoint string, body interface{}, headers map[string]string) (*resty.Response, error)
+	Patch(ctx context.Context, endpoint string, body interface{}, headers map[string]string) (*resty.Response, error)
+	Delete(ctx context.Context, endpoint string, headers map[string]string) (*resty.Response, error)
 	WithLogging(enable bool)
 }
 

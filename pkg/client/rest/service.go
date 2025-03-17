@@ -8,9 +8,8 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/go-resty/resty/v2"
+	"github.com/sirupsen/logrus"
 	"github.com/sony/gobreaker/v2"
 )
 
@@ -31,118 +30,56 @@ func NewClient(cfg Config, l *logrus.Logger) *client {
 	}
 }
 
-func setDefaultConfig(cfg *Config) {
-	defaults := map[*uint32]uint32{
-		&cfg.RetryCount:         DefaultRetryCount,
-		&cfg.CBMaxRequests:      DefaultCBMaxRequests,
-		&cfg.CBRequestThreshold: DefaultCBRequestThreshold,
-	}
-	for k, v := range defaults {
-		if *k == 0 || *k > 100 {
-			*k = v
-		}
-	}
-
-	defaultsFloat := map[*float64]float64{
-		&cfg.CBFailureRateLimit: DefaultCBFailureRateLimit,
-	}
-	for k, v := range defaultsFloat {
-		if *k <= 0 || *k > 100 {
-			*k = v
-		}
-	}
-
-	defaultsDuration := map[*time.Duration]time.Duration{
-		&cfg.RetryWaitTime:    DefaultRetryWaitTime,
-		&cfg.RetryMaxWaitTime: DefaultRetryMaxWaitTime,
-		&cfg.CBInterval:       DefaultCBInterval,
-		&cfg.CBTimeout:        DefaultCBTimeout,
-	}
-	for k, v := range defaultsDuration {
-		if *k <= 0 || *k > time.Minute {
-			*k = v
-		}
-	}
-}
-
-func checkBreakerState(counts gobreaker.Counts, c Config, l *logrus.Logger) bool {
-	var failureRate float64
-	if counts.Requests > 0 {
-		failureRate = float64(counts.TotalFailures) / float64(counts.Requests)
-	}
-	l.Info(context.Background(), "Circuit Breaker Metrics",
-		map[string]interface{}{
-			"Total Requests":     counts.Requests,
-			"Total Successes":    counts.TotalSuccesses,
-			"Total Failures":     counts.TotalFailures,
-			"Failure Rate":       failureRate,
-			"ConsecutiveFails":   counts.ConsecutiveFailures,
-			"ConsecutiveSuccess": counts.ConsecutiveSuccesses,
-		})
-	if counts.ConsecutiveFailures > c.CBMaxRequests || (counts.Requests >= c.CBRequestThreshold && failureRate > c.CBFailureRateLimit) {
-		l.Info("Circuit Breaker se abrirá debido a una alta tasa de fallos.", nil)
-		return true
-	}
-	return false
-}
-
-func createCB(c Config, l *logrus.Logger) *gobreaker.CircuitBreaker[any] {
-	if !c.WithCB {
-		return nil
-	}
-	cbConfig := gobreaker.Settings{
-		Name:        c.CBName,
-		MaxRequests: c.CBMaxRequests,
-		Interval:    c.CBInterval,
-		Timeout:     c.CBTimeout,
-		ReadyToTrip: func(counts gobreaker.Counts) bool {
-			return checkBreakerState(counts, c, l)
-		},
-
-		OnStateChange: func(name string, from, to gobreaker.State) {
-			l.Warn("Circuit Breaker state changed", map[string]interface{}{
-				"name": name,
-				"from": from,
-				"to":   to,
-			})
-		},
-	}
-
-	cb := gobreaker.NewCircuitBreaker[any](cbConfig)
-	return cb
-}
-
-func exponentialBackoffWithJitter(initialWaitTime, maxWaitTime time.Duration, attempt int, l *logrus.Logger) time.Duration {
-	if attempt <= 0 {
-		attempt = 1
-	}
-
-	baseWaitTime := initialWaitTime * time.Duration(math.Pow(BackoffFactor, float64(attempt-1)))
-	jitter := time.Duration(rand.Float64() * float64(baseWaitTime) * MaxJitterPercentage)
-	waitTime := baseWaitTime + jitter
-
-	if waitTime > maxWaitTime {
-		waitTime = maxWaitTime
-	}
-
-	l.Debug(context.Background(), map[string]interface{}{
-		"attempt":   attempt,
-		"baseTime":  baseWaitTime,
-		"jitter":    jitter,
-		"waitTime":  waitTime,
-		"maxWait":   maxWaitTime,
-		"factor":    BackoffFactor,
-		"jitterPct": MaxJitterPercentage,
+func (c *client) Get(ctx context.Context, endpoint string, headers map[string]string) (*resty.Response, error) {
+	return c.executeRequest(ctx, func(ctx context.Context) (*resty.Response, error) {
+		return c.requester.httpClient.R().
+			SetContext(ctx).
+			SetHeaders(headers).
+			Get(c.baseURL + endpoint)
 	})
-
-	return waitTime
 }
 
-func retryAfterFunc(initialWaitTime, maxWaitTime time.Duration, l *logrus.Logger) func(*resty.Client, *resty.Response) (time.Duration, error) {
-	return func(client *resty.Client, resp *resty.Response) (time.Duration, error) {
-		attempt := resp.Request.Attempt
-		return exponentialBackoffWithJitter(initialWaitTime, maxWaitTime, attempt, l), nil
-	}
+func (c *client) Post(ctx context.Context, endpoint string, body interface{}, headers map[string]string) (*resty.Response, error) {
+	return c.executeRequest(ctx, func(ctx context.Context) (*resty.Response, error) {
+		return c.requester.httpClient.R().
+			SetBody(body).
+			SetContext(ctx).
+			SetHeaders(headers).
+			Post(c.baseURL + endpoint)
+	})
+}
+
+func (c *client) Put(ctx context.Context, endpoint string, body interface{}, headers map[string]string) (*resty.Response, error) {
+	return c.executeRequest(ctx, func(ctx context.Context) (*resty.Response, error) {
+		return c.requester.httpClient.R().
+			SetBody(body).
+			SetContext(ctx).
+			SetHeaders(headers).
+			Put(c.baseURL + endpoint)
+	})
+}
+
+func (c *client) Patch(ctx context.Context, endpoint string, body interface{}, headers map[string]string) (*resty.Response, error) {
+	return c.executeRequest(ctx, func(ctx context.Context) (*resty.Response, error) {
+		return c.requester.httpClient.R().
+			SetBody(body).
+			SetContext(ctx).
+			SetHeaders(headers).
+			Patch(c.baseURL + endpoint)
+	})
+}
+
+func (c *client) Delete(ctx context.Context, endpoint string, headers map[string]string) (*resty.Response, error) {
+	return c.executeRequest(ctx, func(ctx context.Context) (*resty.Response, error) {
+		return c.requester.httpClient.R().
+			SetContext(ctx).
+			SetHeaders(headers).
+			Delete(c.baseURL + endpoint)
+	})
+}
+
+func (c *client) WithLogging(enable bool) {
+	c.logging = enable
 }
 
 func createHttpClient(c Config, l *logrus.Logger, timeout time.Duration) *resty.Client {
@@ -158,10 +95,6 @@ func createHttpClient(c Config, l *logrus.Logger, timeout time.Duration) *resty.
 			})
 	}
 	return client
-}
-
-func (c *client) WithLogging(enable bool) {
-	c.logging = enable
 }
 
 func (c *client) executeRequest(ctx context.Context, reqFunc func(ctx context.Context) (*resty.Response, error)) (*resty.Response, error) {
@@ -260,36 +193,6 @@ func (c *client) logCircuitBreakerOpen(ctx context.Context, err error) {
 	}
 }
 
-func (c *client) Get(ctx context.Context, endpoint string) (*resty.Response, error) {
-	return c.executeRequest(ctx, func(ctx context.Context) (*resty.Response, error) {
-		return c.requester.httpClient.R().SetContext(ctx).Get(c.baseURL + endpoint)
-	})
-}
-
-func (c *client) Post(ctx context.Context, endpoint string, body interface{}) (*resty.Response, error) {
-	return c.executeRequest(ctx, func(ctx context.Context) (*resty.Response, error) {
-		return c.requester.httpClient.R().SetBody(body).SetContext(ctx).Post(c.baseURL + endpoint)
-	})
-}
-
-func (c *client) Put(ctx context.Context, endpoint string, body interface{}) (*resty.Response, error) {
-	return c.executeRequest(ctx, func(ctx context.Context) (*resty.Response, error) {
-		return c.requester.httpClient.R().SetBody(body).SetContext(ctx).Put(c.baseURL + endpoint)
-	})
-}
-
-func (c *client) Patch(ctx context.Context, endpoint string, body interface{}) (*resty.Response, error) {
-	return c.executeRequest(ctx, func(ctx context.Context) (*resty.Response, error) {
-		return c.requester.httpClient.R().SetBody(body).SetContext(ctx).Patch(c.baseURL + endpoint)
-	})
-}
-
-func (c *client) Delete(ctx context.Context, endpoint string) (*resty.Response, error) {
-	return c.executeRequest(ctx, func(ctx context.Context) (*resty.Response, error) {
-		return c.requester.httpClient.R().SetContext(ctx).Delete(c.baseURL + endpoint)
-	})
-}
-
 func validateResponse(resp *resty.Response) error {
 	if resp == nil {
 		return errors.New("response is nil")
@@ -306,4 +209,118 @@ func validateResponse(resp *resty.Response) error {
 		bodyPreview = text
 	}
 	return fmt.Errorf("HTTP %d: %s - %s", resp.StatusCode(), resp.Status(), bodyPreview)
+}
+
+func setDefaultConfig(cfg *Config) {
+	defaults := map[*uint32]uint32{
+		&cfg.RetryCount:         DefaultRetryCount,
+		&cfg.CBMaxRequests:      DefaultCBMaxRequests,
+		&cfg.CBRequestThreshold: DefaultCBRequestThreshold,
+	}
+	for k, v := range defaults {
+		if *k == 0 || *k > 100 {
+			*k = v
+		}
+	}
+
+	defaultsFloat := map[*float64]float64{
+		&cfg.CBFailureRateLimit: DefaultCBFailureRateLimit,
+	}
+	for k, v := range defaultsFloat {
+		if *k <= 0 || *k > 100 {
+			*k = v
+		}
+	}
+
+	defaultsDuration := map[*time.Duration]time.Duration{
+		&cfg.RetryWaitTime:    DefaultRetryWaitTime,
+		&cfg.RetryMaxWaitTime: DefaultRetryMaxWaitTime,
+		&cfg.CBInterval:       DefaultCBInterval,
+		&cfg.CBTimeout:        DefaultCBTimeout,
+	}
+	for k, v := range defaultsDuration {
+		if *k <= 0 || *k > time.Minute {
+			*k = v
+		}
+	}
+}
+
+func createCB(c Config, l *logrus.Logger) *gobreaker.CircuitBreaker[any] {
+	if !c.WithCB {
+		return nil
+	}
+	cbConfig := gobreaker.Settings{
+		Name:        c.CBName,
+		MaxRequests: c.CBMaxRequests,
+		Interval:    c.CBInterval,
+		Timeout:     c.CBTimeout,
+		ReadyToTrip: func(counts gobreaker.Counts) bool {
+			return checkBreakerState(counts, c, l)
+		},
+
+		OnStateChange: func(name string, from, to gobreaker.State) {
+			l.Warn("Circuit Breaker state changed", map[string]interface{}{
+				"name": name,
+				"from": from,
+				"to":   to,
+			})
+		},
+	}
+
+	cb := gobreaker.NewCircuitBreaker[any](cbConfig)
+	return cb
+}
+
+func checkBreakerState(counts gobreaker.Counts, c Config, l *logrus.Logger) bool {
+	var failureRate float64
+	if counts.Requests > 0 {
+		failureRate = float64(counts.TotalFailures) / float64(counts.Requests)
+	}
+	l.Info(context.Background(), "Circuit Breaker Metrics",
+		map[string]interface{}{
+			"Total Requests":     counts.Requests,
+			"Total Successes":    counts.TotalSuccesses,
+			"Total Failures":     counts.TotalFailures,
+			"Failure Rate":       failureRate,
+			"ConsecutiveFails":   counts.ConsecutiveFailures,
+			"ConsecutiveSuccess": counts.ConsecutiveSuccesses,
+		})
+	if counts.ConsecutiveFailures > c.CBMaxRequests || (counts.Requests >= c.CBRequestThreshold && failureRate > c.CBFailureRateLimit) {
+		l.Info("Circuit Breaker se abrirá debido a una alta tasa de fallos.", nil)
+		return true
+	}
+	return false
+}
+
+func retryAfterFunc(initialWaitTime, maxWaitTime time.Duration, l *logrus.Logger) func(*resty.Client, *resty.Response) (time.Duration, error) {
+	return func(client *resty.Client, resp *resty.Response) (time.Duration, error) {
+		attempt := resp.Request.Attempt
+		return exponentialBackoffWithJitter(initialWaitTime, maxWaitTime, attempt, l), nil
+	}
+}
+
+func exponentialBackoffWithJitter(initialWaitTime, maxWaitTime time.Duration, attempt int, l *logrus.Logger) time.Duration {
+	if attempt <= 0 {
+		attempt = 1
+	}
+
+	baseWaitTime := initialWaitTime * time.Duration(math.Pow(BackoffFactor, float64(attempt-1)))
+	jitter := time.Duration(rand.Float64() * float64(baseWaitTime) * MaxJitterPercentage)
+	waitTime := baseWaitTime + jitter
+
+	if waitTime > maxWaitTime {
+		waitTime = maxWaitTime
+	}
+
+	l.Debug(context.Background(), map[string]interface{}{
+		"attempt":   attempt,
+		"baseTime":  baseWaitTime,
+		"jitter":    jitter,
+		"waitTime":  waitTime,
+		"maxWait":   maxWaitTime,
+		"factor":    BackoffFactor,
+		"jitterPct": MaxJitterPercentage,
+	})
+
+	return waitTime
 }

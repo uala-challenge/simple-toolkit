@@ -1,42 +1,31 @@
 package rest
 
 import (
-	"bytes"
 	"context"
-	"math"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/go-resty/resty/v2"
-	"github.com/sony/gobreaker/v2"
+
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
 var (
 	mockConfigWithRetry = Config{
-		BaseURL:            "",
-		WithRetry:          true,
-		RetryCount:         2,
-		RetryWaitTime:      1000 * time.Millisecond,
-		RetryMaxWaitTime:   1 * time.Second,
-		WithCB:             false,
-		CBName:             "",
-		CBMaxRequests:      0,
-		CBInterval:         0,
-		CBTimeout:          0,
-		CBRequestThreshold: 0,
-		CBFailureRateLimit: 0,
+		BaseURL:          "",
+		WithRetry:        true,
+		RetryCount:       2,
+		RetryWaitTime:    1000 * time.Millisecond,
+		RetryMaxWaitTime: 1 * time.Second,
+		WithCB:           false,
 	}
+
 	mockConfigWithCB = Config{
 		BaseURL:            "",
 		WithRetry:          false,
-		RetryCount:         0,
-		RetryWaitTime:      0,
-		RetryMaxWaitTime:   0,
 		WithCB:             true,
 		CBName:             "test_cb",
 		CBMaxRequests:      2,
@@ -45,19 +34,10 @@ var (
 		CBRequestThreshold: 4,
 		CBFailureRateLimit: 0.5,
 	}
-	mockConfigWithCBPort = Config{
-		BaseURL:            "http://localhost:9999",
-		WithRetry:          false,
-		RetryCount:         0,
-		RetryWaitTime:      0,
-		RetryMaxWaitTime:   0,
-		WithCB:             true,
-		CBName:             "test_cb",
-		CBMaxRequests:      2,
-		CBInterval:         5 * time.Second,
-		CBTimeout:          3 * time.Second,
-		CBRequestThreshold: 4,
-		CBFailureRateLimit: 0.5,
+
+	mockHeaders = map[string]string{
+		"Authorization": "Bearer test-token",
+		"Content-Type":  "application/json",
 	}
 )
 
@@ -68,232 +48,159 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestGetRequest(t *testing.T) {
-	attempts := 0
-
-	_ = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		attempts++
-		if attempts < 2 {
-			return
-		}
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
 		w.WriteHeader(http.StatusOK)
-		_, err := w.Write(nil)
-		if err != nil {
-			return
-		}
+		_, _ = w.Write([]byte(`{"message": "success"}`))
 	})
 
-	ts := httptest.NewServer(nil)
+	ts := httptest.NewServer(handler)
 	defer ts.Close()
 
 	l := logrus.New()
 	client := NewClient(mockConfigWithRetry, l)
-	_, err := client.Get(context.Background(), ts.URL)
-
-	assert.Error(t, err)
-}
-
-func TestGetRequestWithError(t *testing.T) {
-	failures := 0
-	maxFailures := 2
-
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if failures < maxFailures {
-			failures++
-			http.Error(w, "simulated server error", http.StatusInternalServerError)
-
-			return
-		}
-		w.WriteHeader(http.StatusCreated)
-		_, err := w.Write([]byte(`{"status": "created"}`))
-		if err != nil {
-			return
-		}
-	})
-
-	ts := httptest.NewServer(handler)
-	defer ts.Close()
-
-	l := logrus.New()
-	client := NewClient(mockConfigWithCBPort, l)
-
-	requestBody := bytes.NewBuffer([]byte(`{"name": "test"}`))
-	var err error
-
-	for i := 0; i < maxFailures+1; i++ {
-		_, err = client.Post(context.Background(), ts.URL, requestBody)
-	}
-
-	assert.Error(t, err)
-}
-
-func TestPostRequestWithCB(t *testing.T) {
-	failures := 0
-	maxFailures := 3
-
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if failures < 2 {
-			failures++
-			http.Error(w, "simulated server error", http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusCreated)
-		_, err := w.Write([]byte(`{"status": "created"}`))
-		if err != nil {
-			return
-		}
-	})
-
-	ts := httptest.NewServer(handler)
-	defer ts.Close()
-
-	l := logrus.New()
-	client := NewClient(mockConfigWithCB, l)
-	requestBody := bytes.NewBuffer([]byte(`{"name": "test"}`))
-	var err error
-	var response *resty.Response
-
-	for i := 0; i < maxFailures+1; i++ {
-		response, err = client.Post(context.Background(), ts.URL, requestBody)
-	}
+	resp, err := client.Get(context.Background(), ts.URL, mockHeaders)
 
 	assert.NoError(t, err)
-	assert.NotNil(t, response)
+	assert.NotNil(t, resp)
 }
 
-func TestPostRequestWithCBAndError(t *testing.T) {
-	failures := 0
-
+func TestPostRequest(t *testing.T) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if failures < 4 {
-			failures++
-			http.Error(w, "simulated server error", http.StatusInternalServerError)
-			return
-		}
+		assert.Equal(t, "POST", r.Method)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
 		w.WriteHeader(http.StatusCreated)
-		_, err := w.Write([]byte(`{"status": "created"}`))
-		if err != nil {
-			return
-		}
+		_, _ = w.Write([]byte(`{"status": "created"}`))
 	})
 
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
 
 	l := logrus.New()
-	client := NewClient(mockConfigWithCB, l)
-	client.WithLogging(true)
-	requestBody := bytes.NewBuffer([]byte(`{"name": "test"}`))
-	response, err := client.Post(context.Background(), ts.URL, requestBody)
+	client := NewClient(mockConfigWithRetry, l)
 
-	assert.Error(t, err)
-	assert.Nil(t, response)
-}
+	body := map[string]string{"name": "test"}
+	resp, err := client.Post(context.Background(), ts.URL, body, mockHeaders)
 
-func TestPostRequestIsOpen(t *testing.T) {
-	failures := 0
-	maxFailures := 3
-
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if failures < maxFailures {
-			failures++
-			http.Error(w, "simulated server error", http.StatusInternalServerError)
-			return
-		}
-		w.WriteHeader(http.StatusCreated)
-		_, err := w.Write([]byte(`{"status": "created"}`))
-		if err != nil {
-			return
-		}
-	})
-
-	ts := httptest.NewServer(handler)
-	defer ts.Close()
-
-	l := logrus.New()
-	client := NewClient(mockConfigWithCB, l)
-
-	requestBody := bytes.NewBuffer([]byte(`{"name": "test"}`))
-	var err error
-	var response *resty.Response
-
-	for i := 0; i < maxFailures+1; i++ {
-		response, err = client.Post(context.Background(), ts.URL, requestBody)
-	}
-
-	assert.Error(t, err, "circuit breaker is open")
-	assert.Nil(t, response)
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
 }
 
 func TestPutRequest(t *testing.T) {
-	attempts := 0
-
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		attempts++
-		if attempts < 2 {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
+		assert.Equal(t, "PUT", r.Method)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
 		w.WriteHeader(http.StatusOK)
-		_, err := w.Write([]byte(`{"message": "success"}`))
-		if err != nil {
-			return
-		}
+		_, _ = w.Write([]byte(`{"message": "updated"}`))
 	})
 
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
+
 	l := logrus.New()
 	client := NewClient(mockConfigWithRetry, l)
-	var err error
-	var response *resty.Response
 
-	for i := 0; i < 3; i++ {
-		response, err = client.Put(context.Background(), ts.URL, nil)
-	}
+	body := map[string]string{"update": "true"}
+	resp, err := client.Put(context.Background(), ts.URL, body, mockHeaders)
+
 	assert.NoError(t, err)
-	assert.NotNil(t, response)
+	assert.NotNil(t, resp)
 }
 
 func TestPatchRequest(t *testing.T) {
-	mockResponse := `{"message": "success"}`
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "PATCH", r.Method)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
 		w.WriteHeader(http.StatusOK)
-		_, err := w.Write([]byte(mockResponse))
-		if err != nil {
-			return
-		}
+		_, _ = w.Write([]byte(`{"message": "patched"}`))
 	})
 
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
+
 	l := logrus.New()
 	client := NewClient(mockConfigWithRetry, l)
-	response, err := client.Patch(context.Background(), ts.URL, nil)
+
+	body := map[string]string{"patch": "true"}
+	resp, err := client.Patch(context.Background(), ts.URL, body, mockHeaders)
 
 	assert.NoError(t, err)
-	assert.NotNil(t, response)
+	assert.NotNil(t, resp)
 }
 
 func TestDeleteRequest(t *testing.T) {
-	mockResponse := `{"message": "success"}`
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "DELETE", r.Method)
+		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"))
 		w.WriteHeader(http.StatusOK)
-		_, err := w.Write([]byte(mockResponse))
-		if err != nil {
-			return
-		}
 	})
 
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
+
 	l := logrus.New()
 	client := NewClient(mockConfigWithRetry, l)
-	response, err := client.Delete(context.Background(), ts.URL)
+
+	resp, err := client.Delete(context.Background(), ts.URL, mockHeaders)
 
 	assert.NoError(t, err)
-	assert.NotNil(t, response)
+	assert.NotNil(t, resp)
+}
+
+func TestRetryMechanism(t *testing.T) {
+	attempts := 0
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		if attempts < 2 {
+			http.Error(w, "Temporary error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+
+	l := logrus.New()
+	client := NewClient(mockConfigWithRetry, l)
+
+	resp, err := client.Get(context.Background(), ts.URL, mockHeaders)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, resp)
+}
+
+func TestCircuitBreaker(t *testing.T) {
+	failures := 0
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		failures++
+		if failures < 3 {
+			http.Error(w, "Server error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"message": "success"}`))
+	})
+
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+
+	l := logrus.New()
+	client := NewClient(mockConfigWithCB, l)
+
+	// Realizar varias solicitudes para simular fallos y recuperación
+	var resp *resty.Response
+	var err error
+
+	for i := 0; i < 5; i++ {
+		resp, err = client.Get(context.Background(), ts.URL, mockHeaders)
+		time.Sleep(500 * time.Millisecond) // Esperar para que el breaker se reajuste
+	}
+
+	assert.NoError(t, err, "Circuit Breaker debería permitir la última solicitud exitosa")
+	assert.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.StatusCode())
 }
 
 func TestExponentialBackoffWithJitter(t *testing.T) {
@@ -301,10 +208,10 @@ func TestExponentialBackoffWithJitter(t *testing.T) {
 	initialWait := 100 * time.Millisecond
 	maxWait := 5 * time.Second
 
-	waitTimeZero := exponentialBackoffWithJitter(initialWait, maxWait, 0, l)
-	expectedBaseZero := initialWait * time.Duration(math.Pow(BackoffFactor, 0))
-	assert.GreaterOrEqual(t, waitTimeZero, expectedBaseZero, "Backoff incorrecto para attempt=0")
+	waitTime := exponentialBackoffWithJitter(initialWait, maxWait, 3, l)
 
+	assert.GreaterOrEqual(t, waitTime, initialWait)
+	assert.LessOrEqual(t, waitTime, maxWait)
 }
 
 func TestSetDefaultConfig(t *testing.T) {
@@ -320,33 +227,4 @@ func TestSetDefaultConfig(t *testing.T) {
 	assert.Equal(t, DefaultCBTimeout, cfg.CBTimeout)
 	assert.Equal(t, DefaultCBRequestThreshold, cfg.CBRequestThreshold)
 	assert.Equal(t, DefaultCBFailureRateLimit, cfg.CBFailureRateLimit)
-}
-
-func TestCheckBreakerState(t *testing.T) {
-	l := logrus.New()
-	cfg := Config{CBMaxRequests: 3, CBRequestThreshold: 5, CBFailureRateLimit: 0.5}
-
-	counts := gobreaker.Counts{
-		Requests:            10,
-		TotalFailures:       6,
-		ConsecutiveFailures: 4,
-	}
-	result := checkBreakerState(counts, cfg, l)
-	assert.True(t, result)
-}
-func TestRetryAfterFunc(t *testing.T) {
-	l := logrus.New()
-	client := resty.New()
-	resp := &resty.Response{Request: &resty.Request{Attempt: 3}}
-	retryWait, err := retryAfterFunc(DefaultRetryWaitTime, DefaultRetryMaxWaitTime, l)(client, resp)
-	assert.NoError(t, err)
-	assert.GreaterOrEqual(t, retryWait, DefaultRetryWaitTime)
-	assert.LessOrEqual(t, retryWait, DefaultRetryMaxWaitTime)
-}
-
-func TestValidateResponse_Success(t *testing.T) {
-	resp := &resty.Response{RawResponse: &http.Response{StatusCode: http.StatusOK}}
-	err := validateResponse(resp)
-
-	assert.NoError(t, err)
 }

@@ -43,11 +43,11 @@ func initRoutes() *chi.Mux {
 	r.Use(middleware.Logger)
 	r.Get("/ping", ping.NewService().Apply())
 
-	if app_profile.IsLocalProfile() {
+	if !app_profile.IsProdProfile() {
 		r.Mount("/swagger", swagger.NewService().Apply())
 		r.Handle("/documentation-tech/*", docsify.NewService().Apply())
+		registerPprofRoutes(r)
 	}
-	registerPprofRoutes(r)
 	return r
 }
 

@@ -1,8 +1,9 @@
 package viper
 
 import (
-	"github.com/uala-challenge/simple-toolkit/pkg/client/rest"
 	"sync"
+
+	"github.com/uala-challenge/simple-toolkit/pkg/client/rest"
 
 	"github.com/sirupsen/logrus"
 

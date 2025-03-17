@@ -3,8 +3,9 @@ package app_engine
 import (
 	"context"
 	"fmt"
-	"github.com/uala-challenge/simple-toolkit/pkg/client/rest"
 	"os"
+
+	"github.com/uala-challenge/simple-toolkit/pkg/client/rest"
 
 	"go.elastic.co/ecslogrus"
 

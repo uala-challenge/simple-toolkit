@@ -7,8 +7,15 @@ import (
 	"net/http"
 )
 
+// CommonApiError representa la estructura de respuesta en caso de error.
+// @swagger:model
 type CommonApiError struct {
-	Code     string `json:"code"`
+	// Código del error.
+	// example: "ERR-400"
+	Code string `json:"code"`
+
+	// Mensaje descriptivo del error.
+	// example: "Solicitud incorrecta"
 	Msg      string `json:"msg"`
 	Err      error  `json:"-"`
 	HttpCode int    `json:"-"`

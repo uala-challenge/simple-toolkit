@@ -1,6 +1,7 @@
 package simple_router
 
 import (
+	httpSwagger "github.com/swaggo/http-swagger"
 	"net/http"
 	"net/http/pprof"
 	"os"
@@ -9,7 +10,6 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/uala-challenge/simple-toolkit/pkg/simplify/simple_router/docsify"
 	"github.com/uala-challenge/simple-toolkit/pkg/simplify/simple_router/ping"
-	"github.com/uala-challenge/simple-toolkit/pkg/simplify/simple_router/swagger"
 	"github.com/uala-challenge/simple-toolkit/pkg/utilities/app_profile"
 )
 
@@ -44,7 +44,7 @@ func initRoutes() *chi.Mux {
 	r.Get("/ping", ping.NewService().Apply())
 
 	if !app_profile.IsProdProfile() {
-		r.Mount("/swagger", swagger.NewService().Apply())
+		r.Get("/swagger/*", httpSwagger.WrapHandler)
 		r.Handle("/documentation-tech/*", docsify.NewService().Apply())
 		registerPprofRoutes(r)
 	}

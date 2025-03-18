@@ -16,5 +16,5 @@ func NewService() *service {
 }
 
 func (s *service) Apply() http.HandlerFunc {
-	return httpSwagger.WrapHandler.ServeHTTP
+	return httpSwagger.WrapHandler
 }

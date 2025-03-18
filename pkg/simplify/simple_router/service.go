@@ -1,10 +1,11 @@
 package simple_router
 
 import (
-	httpSwagger "github.com/swaggo/http-swagger"
 	"net/http"
 	"net/http/pprof"
 	"os"
+
+	httpSwagger "github.com/swaggo/http-swagger"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
